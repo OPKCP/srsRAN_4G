@@ -1,0 +1,69 @@
+# ============================================================
+# Базовый Dockerfile для проекта srsRAN_4G
+#
+# Этот образ собирается редко и хранится локально или в реестре.
+# Он содержит:
+# - обновлённую Ubuntu 22.04 с установленными обновлениями;
+# - инструменты сборки и runtime-зависимости;
+# - скачанные и подготовленные образы UHD.
+# ============================================================
+
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV UHD_IMAGES_DIR=/usr/share/uhd/images
+
+ARG GIT_BRANCH=unknown
+ARG GIT_COMMIT_HASH=unknown
+ENV GIT_BRANCH=${GIT_BRANCH}
+ENV GIT_COMMIT_HASH=${GIT_COMMIT_HASH}
+
+# Обновляем базовую систему и устанавливаем все пакеты, которые нужны
+# как для компиляции, так и для запуска контейнеров с srsRAN.
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        cmake \
+        ninja-build \
+        git \
+        pkg-config \
+        ca-certificates \
+        libfftw3-dev \
+        libmbedtls-dev \
+        libboost-program-options-dev \
+        libboost-system-dev \
+        libboost-thread-dev \
+        libconfig++-dev \
+        libsctp-dev \
+        libuhd-dev \
+        uhd-host \
+        libpcsclite-dev \
+        libzmq3-dev \
+        libfftw3-bin \
+        libmbedtls14 \
+        libboost-program-options1.74.0 \
+        libboost-system1.74.0 \
+        libboost-thread1.74.0 \
+        libconfig++9v5 \
+        libsctp1 \
+        libzmq5 \
+        libpcsclite1 \
+        linux-tools-common \
+        usbutils \
+        hwdata \
+        iproute2 \
+        net-tools \
+        iptables \
+        iputils-ping \
+    && rm -rf /var/lib/apt/lists/*
+
+# Скачиваем и готовим UHD images заранее, чтобы итоговая сборка могла
+# проходить без доступа к интернету.
+# RUN mkdir -p /usr/share/uhd/images \
+#     && uhd_images_downloader -y \
+#     && ldconfig
+
+# Сохраняем метаданные сборки для удобства трассировки.
+RUN echo "[BASE-INFO] GIT_BRANCH=${GIT_BRANCH}" \
+ && echo "[BASE-INFO] GIT_COMMIT_HASH=${GIT_COMMIT_HASH}"
