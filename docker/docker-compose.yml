@@ -8,7 +8,7 @@ services:
       tr-network:
         ipv4_address: 172.18.0.2
     volumes:
-      - C:\OPKCP\srsran_configs:/root/.config/srsran:ro
+      - C:\OPKCP\srsran_configs:/etc/srsran:ro
       - C:\OPKCP\srsran_logs:/var/log/srsran
     cap_add:
       - NET_ADMIN
@@ -22,12 +22,12 @@ services:
     image: ghcr.io/opkcp/srsran_4g:latest
     command:
       - srsenb # Запуск базовой станции eNodeB
-      - /root/.config/srsran/enb.conf # Основной файл конфигурации
+      - /etc/srsran/enb.conf # Основной файл конфигурации
     networks:
       tr-network:
         ipv4_address: 172.18.0.3
     volumes:
-      - C:\OPKCP\srsran_configs:/root/.config/srsran:ro
+      - C:\OPKCP\srsran_configs:/etc/srsran:ro
       - C:\OPKCP\uhd_images:/usr/share/uhd/images
       - C:\OPKCP\srsran_logs:/var/log/srsran
     privileged: true

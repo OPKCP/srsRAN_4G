@@ -5,8 +5,10 @@
 # Этап 1 (builder):  компиляция проекта в заранее подготовленной базе.
 # Этап 2 (runtime):  итоговый образ на том же базовом слое с артефактами.
 #
-# Базовый образ передаётся извне и содержит обновлённую ОС, пакеты,
-# инструменты сборки и подготовленные образы UHD.
+# Базовый образ ${BASE_IMAGE} должен быть собран заранее (build-base.*).
+# Он собирается с --pull, гарантируя свежесть ubuntu:22.04.
+# Основной образ НЕ требует --pull, так как стартует с локального/registry
+# слоя ${BASE_IMAGE}, а не с публичного тега ubuntu:22.04.
 # ============================================================
 
 ARG BASE_IMAGE=ghcr.io/opkcp/srsran_4g/srsran_4g-base:base-amd64
@@ -40,12 +42,13 @@ RUN echo "[BUILD-INFO] GIT_BRANCH=${GIT_BRANCH}" \
 # - ENABLE_ZEROMQ=ON               : поддержка ZeroMQ (эмуляция без железа)
 # - CMAKE_BUILD_TYPE=Release       : оптимизированная сборка
 # - ENABLE_4G=ON                : 4G включён
-RUN --mount=type=cache,target=/src/srsRAN_4G/build \
-    --mount=type=cache,target=/root/.cache/ccache \
+#
+# Cache mount используется ТОЛЬКО для ccache (кэш объектных файлов компилятора).
+# Директория build/ создаётся заново в каждом слое — так cmake всегда
+# перегенерарирует из актуальных исходников, избегая stale-артефактов.
+RUN --mount=type=cache,target=/root/.cache/ccache,sharing=locked \
     mkdir -p build \
     && cd build \
-    && CCACHE_CMAKE_FLAGS="" \
-    && if command -v ccache >/dev/null 2>&1; then CCACHE_CMAKE_FLAGS="-DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"; fi \
     && cmake .. \
         -GNinja \
         -DCMAKE_INSTALL_PREFIX=/usr/local \
@@ -53,7 +56,8 @@ RUN --mount=type=cache,target=/src/srsRAN_4G/build \
         -DENABLE_UHD=ON \
         -DENABLE_ZEROMQ=ON \
         -DENABLE_4G=ON \
-        ${CCACHE_CMAKE_FLAGS} \
+        -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+        -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
     && ninja -j"$(nproc)" \
     && ninja install \
     && ldconfig
@@ -96,15 +100,20 @@ VOLUME ["/etc/srsran"]
 VOLUME ["/var/log/srsran"]
 VOLUME ["/usr/share/uhd/images"]
 
-# Объявляем том для директории логов (enb.log, epc.log и др.)
-VOLUME ["/tmp"]
-
 # Сетевые порты, используемые компонентами srsRAN:
 # 36412/sctp — S1-MME (интерфейс eNodeB ↔ MME, S1AP)
 # 36422/sctp — X2AP  (интерфейс eNodeB ↔ eNodeB, хэндовер)
 # 2152/udp   — GTP-U  (пользовательские данные S1-U / X2-U)
 # 36421/sctp — E2AP   (интерфейс RIC E2, O-RAN)
 EXPOSE 36412/sctp 36422/sctp 2152/udp 36421/sctp
+
+# HEALTHCHECK: srsenb слушает SCTP-порт 36412 (S1-MME).
+# Проверяем, что процесс жив и порт открыт, используя ss + awk
+# (SCTP-сокеты не видны через /proc/net/tcp).
+# Интервал 30с, таймаут 10с, 3 попытки перед unhealthy, задержка 15с.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD ss -lnp -S | awk '/srsenb/ && /36412/ {found=1} END {exit !found}' \
+    || pgrep srsenb || exit 1
 
 # Команда по умолчанию — запуск eNodeB с конфигурацией из тома.
 # Для запуска ядра сети: docker run ... srsepc /etc/srsran/epc.conf

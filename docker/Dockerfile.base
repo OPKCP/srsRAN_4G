@@ -6,6 +6,9 @@
 # - обновлённую Ubuntu 22.04 с установленными обновлениями;
 # - инструменты сборки и runtime-зависимости;
 # - скачанные и подготовленные образы UHD.
+#
+# ⚠ Сборка должна выполняться с флагом --pull, чтобы образ всегда
+#   базировался на свежем ubuntu:22.04 (см. build-base.sh / build-base.cmd).
 # ============================================================
 
 FROM ubuntu:22.04
@@ -29,6 +32,7 @@ RUN apt-get update \
         git \
         pkg-config \
         ca-certificates \
+        ccache \
         libfftw3-dev \
         libmbedtls-dev \
         libboost-program-options-dev \
@@ -60,9 +64,10 @@ RUN apt-get update \
 
 # Скачиваем и готовим UHD images заранее, чтобы итоговая сборка могла
 # проходить без доступа к интернету.
-# RUN mkdir -p /usr/share/uhd/images \
-#     && uhd_images_downloader -y \
-#     && ldconfig
+RUN mkdir -p /usr/share/uhd/images \
+    && uhd_images_downloader -y \
+    && rm -rf /root/.cache/uhd \
+    && ldconfig
 
 # Сохраняем метаданные сборки для удобства трассировки.
 RUN echo "[BASE-INFO] GIT_BRANCH=${GIT_BRANCH}" \

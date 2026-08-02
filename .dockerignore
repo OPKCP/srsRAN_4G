@@ -1,0 +1,53 @@
+# ============================================================
+# .dockerignore — список файлов и папок, исключаемых
+# из контекста сборки Docker.
+#
+# ⚠ ВНИМАНИЕ: меняй синхронно с build_trial.sh
+# ============================================================
+
+# Система контроля версий
+.git/
+.gitignore
+.gitattributes
+.gitmodules
+
+# Директории сборки на хосте (если есть)
+build*/
+_build*/
+out/
+
+# Артефакты Docker
+docker/imgs/
+
+# Временные файлы, логи, дампы
+*.log
+*.tmp
+*.swp
+*.swo
+core.*
+*.dmp
+*.pid
+
+# Документация и мета-файлы (не нужны для компиляции)
+CHANGELOG
+COPYRIGHT
+LICENSE
+README.md
+*.md
+man/
+
+# Дистрибутивные файлы
+debian/
+
+# Docker-файлы (копируются из docker/ явно)
+docker/Dockerfile
+docker/Dockerfile.base
+docker/build*.sh
+docker/build*.cmd
+docker/docker-compose.yml
+
+# Мусор
+*.bak
+*.orig
+.DS_Store
+Thumbs.db

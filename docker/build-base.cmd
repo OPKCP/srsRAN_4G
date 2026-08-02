@@ -26,6 +26,20 @@ SET SCRIPT_DIR=%~dp0
 SET REPO_ROOT=%SCRIPT_DIR%..
 SET IMAGES_DIR=%SCRIPT_DIR%imgs
 
+REM --------------------------------------------------------------------------
+REM Проверка наличия uhd_images_downloader на хосте
+REM --------------------------------------------------------------------------
+where uhd_images_downloader >nul 2>nul
+IF ERRORLEVEL 1 (
+    echo [WARN] uhd_images_downloader не найден на хосте.
+    echo [WARN] UHD images НЕ будут загружены в базовый образ.
+    echo [WARN] Если требуется поддержка USRP, установи UHD или
+    echo [WARN] монтируй host-путь с образами в runtime:
+    echo [WARN]   -v C:\uhd_images:/usr/share/uhd/images
+) ELSE (
+    echo [OK] uhd_images_downloader найден на хосте.
+)
+
 echo ==============================================
 echo   srsRAN_4G базовый Docker образ
 echo ==============================================
