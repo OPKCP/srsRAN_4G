@@ -8,8 +8,8 @@ services:
       tr-network:
         ipv4_address: 172.18.0.2
     volumes:
-      - C:\OPKCP\srsran_configs:/etc/srsran:ro
-      - C:\OPKCP\srsran_logs:/var/log/srsran
+      - ..\srsran_configs:/etc/srsran:ro
+      - ..\logs:/var/log/srsran
     cap_add:
       - NET_ADMIN
     devices:
@@ -27,9 +27,9 @@ services:
       tr-network:
         ipv4_address: 172.18.0.3
     volumes:
-      - C:\OPKCP\srsran_configs:/etc/srsran:ro
-      - C:\OPKCP\uhd_images:/usr/share/uhd/images
-      - C:\OPKCP\srsran_logs:/var/log/srsran
+      - ..\srsran_configs:/etc/srsran:ro
+      - ..\uhd_images:/usr/share/uhd/images
+      - ..\logs:/var/log/srsran
     privileged: true
     restart: unless-stopped
 

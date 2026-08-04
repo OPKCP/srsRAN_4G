@@ -108,10 +108,10 @@ IF ERRORLEVEL 1 (
 echo ** Образ экспортирован: %IMAGE_TAR%
 echo.
 echo Запуск eNodeB:
-echo   docker run --rm -v C:\OPKCP\srsran_configs:/etc/srsran:ro %IMAGE%
+echo   docker compose -f docker\docker-compose.yml up -d enb
 echo.
 echo Запуск ядра сети EPC:
-echo   docker run --rm -v C:\OPKCP\srsran_configs:/etc/srsran:ro %IMAGE% srsepc /etc/srsran/epc.conf
+echo   docker compose -f docker\docker-compose.yml up -d epc
 echo.
 
 endlocal

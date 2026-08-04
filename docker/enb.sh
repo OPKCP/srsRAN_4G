@@ -16,10 +16,12 @@ else
   echo "[OK] Сеть tr-network уже существует"
 fi
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Пути на Linux-хосте (можно переопределить через переменные окружения)
-CONFIG_DIR="${CONFIG_DIR:-/opt/opkcp/srsran_configs}"
-LOGS_DIR="${LOGS_DIR:-/opt/opkcp/srsran_logs}"
-UHD_IMAGES_DIR="${UHD_IMAGES_DIR:-/opt/opkcp/uhd_images}"
+CONFIG_DIR="${CONFIG_DIR:-${SCRIPT_DIR}/../srsran_configs}"
+LOGS_DIR="${LOGS_DIR:-${SCRIPT_DIR}/../logs}"
+UHD_IMAGES_DIR="${UHD_IMAGES_DIR:-${SCRIPT_DIR}/../uhd_images}"
 IMAGE="${SRSRAN_IMAGE:-ghcr.io/opkcp/srsran_4g:latest}"
 
 # Проверка каталога логов

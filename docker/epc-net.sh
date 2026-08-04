@@ -6,10 +6,12 @@ set -euo pipefail
 # CONFIG_DIR/LOGS_DIR: каталоги конфигов и логов на Linux-хосте.
 # BASE_CFG: исходный epc.conf, TMP_CFG: временный конфиг с подстановкой сетевых адресов.
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Профиль EPC для запуска на отдельном Linux-хосте в LAN
 EPC_HOST_IP="${EPC_HOST_IP:-192.168.1.18}"
-CONFIG_DIR="${CONFIG_DIR:-/opt/opkcp/srsran_configs}"
-LOGS_DIR="${LOGS_DIR:-/opt/opkcp/srsran_logs}"
+CONFIG_DIR="${CONFIG_DIR:-${SCRIPT_DIR}/../srsran_configs}"
+LOGS_DIR="${LOGS_DIR:-${SCRIPT_DIR}/../logs}"
 BASE_CFG="${BASE_CFG:-${CONFIG_DIR}/epc.conf}"
 TMP_CFG="$(mktemp /tmp/epc.net.XXXXXX.conf)"
 IMAGE="${SRSRAN_IMAGE:-ghcr.io/opkcp/srsran_4g:latest}"

@@ -10,9 +10,9 @@ services:
       tr-network:
         ipv4_address: 172.18.0.2
     volumes:
-      - C:\src\intsis\srsRAN_4G\srsran_configs\prod\epc\epc.conf:/etc/srsran/epc.conf:ro
-      - C:\src\intsis\srsRAN_4G\srsran_configs\prod\epc\user_db.csv:/etc/srsran/user_db.csv:ro
-      - C:\OPKCP\srsran_logs:/var/log/srsran
+      - ..\srsran_configs\prod\epc\epc.conf:/etc/srsran/epc.conf:ro
+      - ..\srsran_configs\prod\epc\user_db.csv:/etc/srsran/user_db.csv:ro
+      - ..\logs:/var/log/srsran
     cap_add:
       - NET_ADMIN
     devices:
@@ -30,13 +30,13 @@ services:
       tr-network:
         ipv4_address: 172.18.0.3
     volumes:
-      - C:\src\intsis\srsRAN_4G\srsran_configs\prod\enb1\enb.conf:/etc/srsran/enb.conf:ro
-      - C:\src\intsis\srsRAN_4G\srsran_configs\prod\enb1\rr.conf:/etc/srsran/rr.conf:ro
-      - C:\src\intsis\srsRAN_4G\srsran_configs\prod\enb1\rb.conf:/etc/srsran/rb.conf:ro
-      - C:\src\intsis\srsRAN_4G\srsran_configs\prod\enb1\sib.conf:/etc/srsran/sib.conf:ro
-      - C:\src\intsis\srsRAN_4G\srsran_configs\prod\enb1\mbms.conf:/etc/srsran/mbms.conf:ro
-      - C:\src\intsis\srsRAN_4G\srsran_configs\prod\enb1\ue.conf:/etc/srsran/ue.conf:ro
-      - C:\OPKCP\srsran_logs:/var/log/srsran
+      - ..\srsran_configs\prod\enb1\enb.conf:/etc/srsran/enb.conf:ro
+      - ..\srsran_configs\prod\enb1\rr.conf:/etc/srsran/rr.conf:ro
+      - ..\srsran_configs\prod\enb1\rb.conf:/etc/srsran/rb.conf:ro
+      - ..\srsran_configs\prod\enb1\sib.conf:/etc/srsran/sib.conf:ro
+      - ..\srsran_configs\prod\enb1\mbms.conf:/etc/srsran/mbms.conf:ro
+      - ..\srsran_configs\prod\enb1\ue.conf:/etc/srsran/ue.conf:ro
+      - ..\logs:/var/log/srsran
     privileged: true
     restart: unless-stopped
 

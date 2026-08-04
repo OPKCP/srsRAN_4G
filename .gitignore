@@ -1,2 +1,3 @@
 docker/imgs/
+logs/
 *.tar

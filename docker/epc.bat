@@ -16,8 +16,17 @@ if errorlevel 1 (
     echo [OK] Сеть tr-network уже существует
 )
 
-REM Проверка наличия каталога логов на хосте
-set "LOGS_DIR=C:\OPKCP\srsran_logs"
+REM Пути относительно каталога скрипта (docker/)
+set "CONFIG_DIR=%~dp0..\srsran_configs"
+set "LOGS_DIR=%~dp0..\logs"
+
+REM Проверка каталога конфигов
+if not exist "%CONFIG_DIR%" (
+    echo [ERROR] Каталог конфигурации не найден: "%CONFIG_DIR%"
+    exit /b 1
+)
+
+REM Проверка каталога логов
 if not exist "%LOGS_DIR%" (
     echo [INFO] Каталог логов "%LOGS_DIR%" не найден. Создаю...
     mkdir "%LOGS_DIR%"
@@ -34,8 +43,8 @@ REM Запуск контейнера epc
 docker run --rm -it ^
    --name epc ^
    --hostname epc ^
-   -v C:\OPKCP\srsran_configs:/root/.config/srsran:ro ^
-   -v C:\OPKCP\srsran_logs:/var/log/srsran ^
+   -v "%CONFIG_DIR%:/root/.config/srsran:ro" ^
+   -v "%LOGS_DIR%:/var/log/srsran" ^
     --network tr-network ^
    --cap-add=NET_ADMIN ^
    --device=/dev/net/tun ^

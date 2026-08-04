@@ -35,7 +35,7 @@ IF ERRORLEVEL 1 (
     echo [WARN] UHD images НЕ будут загружены в базовый образ.
     echo [WARN] Если требуется поддержка USRP, установи UHD или
     echo [WARN] монтируй host-путь с образами в runtime:
-    echo [WARN]   -v C:\uhd_images:/usr/share/uhd/images
+    echo [WARN]   -v </usr/share/uhd/images
 ) ELSE (
     echo [OK] uhd_images_downloader найден на хосте.
 )

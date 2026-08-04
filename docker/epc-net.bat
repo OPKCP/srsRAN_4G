@@ -4,8 +4,8 @@ setlocal enabledelayedexpansion
 
 REM Сетевой профиль EPC для запуска на отдельном хосте в LAN
 set "EPC_HOST_IP=192.168.1.18"
-set "CONFIG_DIR=C:\OPKCP\srsran_configs"
-set "LOGS_DIR=C:\OPKCP\srsran_logs"
+set "CONFIG_DIR=%~dp0..\srsran_configs"
+set "LOGS_DIR=%~dp0..\logs"
 set "BASE_CFG=%CONFIG_DIR%\epc.conf"
 set "TMP_CFG=%TEMP%\epc.net.conf"
 
@@ -44,8 +44,8 @@ docker run --rm -it ^
    --name epc ^
    --hostname epc ^
    -v "%TMP_CFG%":/root/.config/srsran/epc.conf:ro ^
-   -v C:\OPKCP\srsran_configs:/root/.config/srsran:ro ^
-   -v C:\OPKCP\srsran_logs:/var/log/srsran ^
+   -v "%CONFIG_DIR%:/root/.config/srsran:ro" ^
+   -v "%LOGS_DIR%:/var/log/srsran" ^
    --network host ^
    --cap-add=NET_ADMIN ^
    --device=/dev/net/tun ^
