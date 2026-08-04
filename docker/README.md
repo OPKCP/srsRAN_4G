@@ -15,6 +15,8 @@
 | `build-base-arm.cmd` | Скрипт локальной сборки базового образа для **ARM64 Windows CMD** |
 | `build.sh` | Скрипт локальной сборки итогового образа для **Linux / macOS** |
 | `build.cmd` | Скрипт локальной сборки итогового образа для **Windows 11 CMD** |
+| `usbip-wsl.ps1` | PowerShell-скрипт автоматического подключения SDR к WSL 2 через usbipd-win |
+| `usbip-wsl.cmd` | Batch-обёртка для запуска `usbip-wsl.ps1` из CMD |
 
 ## Образ в реестре
 
@@ -190,11 +192,58 @@ docker run -it --rm \
     ghcr.io/opkcp/srsran_4g/srsran_4g:latest
 ```
 
-## Проброс USB-устройств USRP (Windows + WSL)
+## Проброс USB-устройств SDR (Windows + WSL)
 
-Для работы с реальным SDR USRP через Docker на Windows требуется:
+Для работы с реальным SDR (USRP B210, HackRF One) через Docker на Windows
+требуется пробросить USB-устройство в WSL 2 с помощью `usbipd-win`.
 
-### 1. На хосте Windows (PowerShell / winget)
+### Автоматизация (рекомендуется)
+
+В репозитории есть PowerShell-скрипт, который выполняет весь цикл подключения:
+
+```powershell
+# Запустить автоматическое подключение USRP или HackRF
+.\docker\usbip-wsl.ps1
+```
+
+Что делает скрипт:
+
+1. Проверяет/устанавливает `usbipd-win`
+2. Находит SDR-устройства по VID:PID (`2500:0020` для USRP, `1d50:6089` для HackRF)
+3. Если выбрано несколько — предлагает выбрать
+4. Для USRP — запускает `uhd_find_devices` (первичная прошивка устройства)
+5. После прошивки обновляет BUSID (устройство могло перезагрузиться)
+6. Выполняет `usbipd bind` — при необходимости открывает окно UAC для
+   повышения привилегий
+7. Выполняет `usbipd attach --wsl`
+8. Проверяет, что устройство в статусе `Attached`
+9. Проверяет видимость устройства внутри WSL (`wsl lsusb`)
+
+Параметры:
+
+| Параметр | Описание |
+|----------|----------|
+| `-BusId` | BUSID устройства (например, `2-14`). Если не указан — покажет список |
+| `-VidPids` | Массив VID:PID для поиска (по умолчанию USRP + HackRF) |
+| `-SkipUhdInit` | Пропустить `uhd_find_devices` (если USRP уже прошит) |
+| `-RadiocondaBin` | Путь к каталогу с утилитами radioconda |
+
+Примеры:
+
+```powershell
+# Базовый запуск (с выбором устройства)
+.\docker\usbip-wsl.ps1
+
+# Подключить конкретное устройство
+.\docker\usbip-wsl.ps1 -BusId 2-14
+
+# Только HackRF One, без инициализации UHD
+.\docker\usbip-wsl.ps1 -VidPids @("1d50:6089") -SkipUhdInit
+```
+
+### Вручную
+
+#### 1. На хосте Windows (PowerShell / winget)
 
 ```powershell
 # Установить usbipd-win
@@ -203,14 +252,14 @@ winget install usbipd
 # Перезапустить консоль и найти BUSID устройства USRP
 usbipd list
 
-# Привязать устройство (одноразово после перезагрузки)
+# Привязать устройство (одноразово после перезагрузки, требует админ. прав)
 usbipd bind -b <BUSID>
 
 # Пробросить устройство в WSL
 usbipd attach --wsl -b <BUSID>
 ```
 
-### 2. В WSL (Ubuntu)
+#### 2. В WSL (Ubuntu)
 
 ```bash
 # Проверить видимость устройства
@@ -220,7 +269,7 @@ lsusb
 sudo modprobe usbip-core usbip-host
 ```
 
-### 3. В Docker (Linux containers)
+#### 3. В Docker (Linux containers)
 
 ```bash
 docker run -it --rm \
