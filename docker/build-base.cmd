@@ -49,11 +49,13 @@ echo   Dockerfile: %SCRIPT_DIR%Dockerfile.base
 echo ==============================================
 echo.
 
+REM Важно: кавычки НЕ ставятся вокруг значений --build-arg, иначе Docker
+REM получит значение с кавычками как часть строки (GIT_BRANCH="main").
 docker build ^
     --pull ^
     --file "%SCRIPT_DIR%Dockerfile.base" ^
-    --build-arg GIT_BRANCH="%GIT_BRANCH%" ^
-    --build-arg GIT_COMMIT_HASH="%GIT_COMMIT_HASH%" ^
+    --build-arg "GIT_BRANCH=%GIT_BRANCH%" ^
+    --build-arg "GIT_COMMIT_HASH=%GIT_COMMIT_HASH%" ^
     --tag "%BASE_IMAGE%" ^
     --progress=plain ^
     "%REPO_ROOT%"

@@ -75,11 +75,13 @@ IF ERRORLEVEL 1 (
 REM --------------------------------------------------------------------------
 REM Сборка образа. Контекст — корень репозитория, Dockerfile — в папке docker\
 REM --------------------------------------------------------------------------
+REM Важно: кавычки НЕ ставятся вокруг значений --build-arg, иначе Docker
+REM получит значение с кавычками как часть строки (GIT_BRANCH="main").
 docker build ^
     --file "%SCRIPT_DIR%Dockerfile" ^
-    --build-arg GIT_BRANCH="%GIT_BRANCH%" ^
-    --build-arg GIT_COMMIT_HASH="%GIT_COMMIT_HASH%" ^
-    --build-arg BASE_IMAGE="%BASE_IMAGE%" ^
+    --build-arg "GIT_BRANCH=%GIT_BRANCH%" ^
+    --build-arg "GIT_COMMIT_HASH=%GIT_COMMIT_HASH%" ^
+    --build-arg "BASE_IMAGE=%BASE_IMAGE%" ^
     --tag  "%IMAGE%" ^
     --progress=plain ^
     "%REPO_ROOT%"
