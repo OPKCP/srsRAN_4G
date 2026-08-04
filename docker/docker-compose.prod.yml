@@ -1,0 +1,49 @@
+# Тестовый запуск LTE сети: EPC + eNB #1
+# Использует конфиги из srsran_configs/prod (epc/ + enb1/)
+services:
+  epc:
+    container_name: epc
+    hostname: epc
+    image: ghcr.io/opkcp/srsran_4g:latest
+    command: srsepc
+    networks:
+      tr-network:
+        ipv4_address: 172.18.0.2
+    volumes:
+      - C:\src\intsis\srsRAN_4G\srsran_configs\prod\epc\epc.conf:/etc/srsran/epc.conf:ro
+      - C:\src\intsis\srsRAN_4G\srsran_configs\prod\epc\user_db.csv:/etc/srsran/user_db.csv:ro
+      - C:\OPKCP\srsran_logs:/var/log/srsran
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    restart: unless-stopped
+
+  enb1:
+    container_name: enb1
+    hostname: enb1
+    image: ghcr.io/opkcp/srsran_4g:latest
+    command:
+      - srsenb
+      - /etc/srsran/enb.conf
+    networks:
+      tr-network:
+        ipv4_address: 172.18.0.3
+    volumes:
+      - C:\src\intsis\srsRAN_4G\srsran_configs\prod\enb1\enb.conf:/etc/srsran/enb.conf:ro
+      - C:\src\intsis\srsRAN_4G\srsran_configs\prod\enb1\rr.conf:/etc/srsran/rr.conf:ro
+      - C:\src\intsis\srsRAN_4G\srsran_configs\prod\enb1\rb.conf:/etc/srsran/rb.conf:ro
+      - C:\src\intsis\srsRAN_4G\srsran_configs\prod\enb1\sib.conf:/etc/srsran/sib.conf:ro
+      - C:\src\intsis\srsRAN_4G\srsran_configs\prod\enb1\mbms.conf:/etc/srsran/mbms.conf:ro
+      - C:\src\intsis\srsRAN_4G\srsran_configs\prod\enb1\ue.conf:/etc/srsran/ue.conf:ro
+      - C:\OPKCP\srsran_logs:/var/log/srsran
+    privileged: true
+    restart: unless-stopped
+
+networks:
+  tr-network:
+    driver: bridge
+    internal: false
+    ipam:
+      config:
+        - subnet: 172.18.0.0/24
