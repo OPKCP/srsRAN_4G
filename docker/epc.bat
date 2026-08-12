@@ -49,5 +49,5 @@ docker run --rm -it ^
    --cap-add=NET_ADMIN ^
    --device=/dev/net/tun ^
     --ip 172.18.0.2 ^
-   ghcr.io/OPKCP/srsran_4g:latest ^
+   ghcr.io/opkcp/srsran_4g:latest ^
    srsepc
