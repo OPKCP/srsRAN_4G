@@ -23,7 +23,7 @@ if errorlevel 1 (
 )
 
 REM Пути относительно каталога скрипта (docker/)
-set "CONFIG_DIR=%~dp0..\srsran_configs"
+set "CONFIG_DIR=%~dp0..\srsran_configs\prod\enb1"
 set "LOGS_DIR=%~dp0..\logs"
 set "UHD_IMAGES_DIR=%~dp0..\uhd_images"
 

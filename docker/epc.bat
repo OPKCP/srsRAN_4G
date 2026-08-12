@@ -17,7 +17,7 @@ if errorlevel 1 (
 )
 
 REM Пути относительно каталога скрипта (docker/)
-set "CONFIG_DIR=%~dp0..\srsran_configs"
+set "CONFIG_DIR=%~dp0..\srsran_configs\prod\epc"
 set "LOGS_DIR=%~dp0..\logs"
 
 REM Проверка каталога конфигов
