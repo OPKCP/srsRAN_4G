@@ -1,3 +1,9 @@
 docker/imgs/
 logs/
 *.tar
+
+# UHD images: игнорировать все, кроме образа USRP B210
+uhd_images/*
+!uhd_images/
+!uhd_images/*b210*
+!uhd_images/inventory.json
