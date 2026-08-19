@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Автоматическое подключение SDR-устройств (USRP, HackRF) к WSL 2 через usbipd-win.
 
@@ -22,6 +22,12 @@
 .PARAMETER RadiocondaBin
     Путь к каталогу с утилитами radioconda (uhd_find_devices.exe и т.д.).
 
+.PARAMETER WslDistro
+    Имя дистрибутива WSL, в который прикрепляется устройство.
+    По умолчанию "docker-desktop", т.к. контейнеры Docker Desktop работают
+    внутри этой WSL-виртуалки. Для прикрепления к обычному дистрибутиву
+    укажите его имя, например "Ubuntu-22.04".
+
 .EXAMPLE
     # Запустить с выбором устройства из списка
     .\usbip-wsl.ps1
@@ -33,6 +39,10 @@
 .EXAMPLE
     # Подключить HackRF One
     .\usbip-wsl.ps1 -VidPids @("1d50:6089")
+
+.EXAMPLE
+    # Прикрепить устройство к Docker Desktop (чтобы оно попало в контейнеры)
+    .\usbip-wsl.ps1 -WslDistro docker-desktop
 #>
 
 param(
@@ -47,8 +57,32 @@ param(
 
     [string]$RadiocondaBin = "$env:LOCALAPPDATA\..\p.shmachilin\radioconda\Library\bin",
 
-    [switch]$SkipUhdInit
+    [switch]$SkipUhdInit,
+
+    [string]$WslDistro = "docker-desktop"
 )
+
+# ──────────────────────────────────────────────────────
+# Автоповышение прав до администратора (без UAC-промптов в процессе)
+# ──────────────────────────────────────────────────────
+$isWindows = $env:OS -eq 'Windows_NT'
+if ($isWindows -and -not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    Write-Host "[INFO] Требуются права администратора. Перезапускаю с повышением..."
+    try {
+        $argList = if ($args.Count -gt 0) { $args -join ' ' } else { '' }
+        $psi = New-Object System.Diagnostics.ProcessStartInfo
+        $psi.FileName = 'powershell.exe'
+        $psi.Arguments = "-NoProfile -ExecutionPolicy RemoteSigned -File `"$PSCommandPath`" $argList"
+        $psi.Verb = "runas"
+        $psi.UseShellExecute = $true
+        $psi.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
+        $proc = [System.Diagnostics.Process]::Start($psi)
+        if ($proc) { $proc.WaitForExit(); exit $proc.ExitCode } else { exit 1 }
+    } catch {
+        Write-Host "[ERROR] Не удалось получить права администратора: $_"
+        exit 1
+    }
+}
 
 # ──────────────────────────────────────────────────────
 # Helper: цвета и форматирование
@@ -66,40 +100,6 @@ function Write-Step { Write-Host "`n🚀 $($args[0])" -ForegroundColor Magenta }
 # ──────────────────────────────────────────────────────
 function Test-Command($cmd) {
     return [bool](Get-Command $cmd -ErrorAction SilentlyContinue)
-}
-
-# ──────────────────────────────────────────────────────
-# Helper: запуск с повышением привилегий
-# ──────────────────────────────────────────────────────
-function Invoke-Elevated($command, $arguments) {
-    Write-Warn "Требуются права администратора для выполнения команды:"
-    Write-Host "  $command $arguments" -ForegroundColor Gray
-    Write-Host "`nОткроется окно UAC (User Account Control). Подтвердите повышение." -ForegroundColor Yellow
-
-    try {
-        $psi = New-Object System.Diagnostics.ProcessStartInfo
-        $psi.FileName = $command
-        $psi.Arguments = $arguments
-        $psi.Verb = "runas"
-        $psi.UseShellExecute = $true
-        $psi.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Normal
-
-        $proc = [System.Diagnostics.Process]::Start($psi)
-        if (-not $proc) {
-            Write-Err "Не удалось запустить процесс с правами администратора."
-            return $false
-        }
-        $proc.WaitForExit()
-        if ($proc.ExitCode -ne 0) {
-            Write-Err "Команда завершилась с кодом $($proc.ExitCode)."
-            return $false
-        }
-        Write-Ok "Команда выполнена."
-        return $true
-    } catch {
-        Write-Err "Ошибка при запуске с повышением: $_"
-        return $false
-    }
 }
 
 # ──────────────────────────────────────────────────────
@@ -156,7 +156,7 @@ if ($targetDevices.Count -eq 0) {
 }
 
 # ──────────────────────────────────────────────────────
-# Выбор устройства (если не указан BusId)
+# Выбор устройства (без интерактива)
 # ──────────────────────────────────────────────────────
 if (-not $BusId) {
     if ($targetDevices.Count -eq 1) {
@@ -164,19 +164,11 @@ if (-not $BusId) {
         Write-Info "Найдено устройство: $($targetDevices[0].Description) (BUSID: $BusId)"
     }
     else {
-        Write-Info "Найдено несколько устройств. Выберите нужное:"
-        for ($i = 0; $i -lt $targetDevices.Count; $i++) {
-            $d = $targetDevices[$i]
-            $state = if ($d.State -eq "Attached") { " (уже подключено)" } else { "" }
-            Write-Host "  [$i] BUSID $($d.BusId) — $($d.Description)$state" -ForegroundColor Yellow
-        }
-        $choice = Read-Host "`nВведите номер устройства (0..$($targetDevices.Count-1))"
-        if ($choice -match '^\d+$' -and [int]$choice -lt $targetDevices.Count) {
-            $BusId = $targetDevices[[int]$choice].BusId
-        } else {
-            Write-Err "Некорректный выбор."
-            exit 1
-        }
+        # Несколько устройств — берём первое ещё не прикреплённое, иначе первое из списка
+        $notAttached = $targetDevices | Where-Object { $_.State -ne "Attached" }
+        $toUse = if ($notAttached.Count -gt 0) { $notAttached[0] } else { $targetDevices[0] }
+        $BusId = $toUse.BusId
+        Write-Info "Найдено несколько устройств. Автовыбор: $($toUse.Description) (BUSID: $BusId)"
     }
 }
 
@@ -264,7 +256,7 @@ if ($isUsrp -and -not $SkipUhdInit) {
             Write-Err "Ошибка при выполнении uhd_find_devices: $_"
         }
         finally {
-            if ($envBackup -ne $null) { $env:UHD_IMAGES_DIR = $envBackup }
+            if ($null -ne $envBackup) { $env:UHD_IMAGES_DIR = $envBackup }
         }
     }
 }
@@ -277,15 +269,17 @@ elseif ($isUsrp -and $SkipUhdInit) {
 # ──────────────────────────────────────────────────────
 if ($selectedDevice.State -eq "Not shared") {
     Write-Step "Привязка устройства (bind)..."
-    Write-Warn "Для привязки требуются права администратора."
-
-    $bindCommand = "usbipd"
-    $bindArgs = "bind -b $BusId"
-
-    $success = Invoke-Elevated $bindCommand $bindArgs
-    if (-not $success) {
-        Write-Err "Не удалось выполнить bind. Попробуйте запустить консоль от администратора и выполнить:"
-        Write-Host "  usbipd bind -b $BusId" -ForegroundColor Yellow
+    Write-Info "Запуск: usbipd bind -b $BusId"
+    try {
+        usbipd bind -b $BusId 2>&1 | ForEach-Object { Write-Host "  $_" -ForegroundColor Gray }
+        if ($LASTEXITCODE -ne 0) {
+            Write-Err "Не удалось выполнить bind (код $LASTEXITCODE)."
+            exit 1
+        }
+        Write-Ok "bind выполнен."
+    }
+    catch {
+        Write-Err "Ошибка при bind: $_"
         exit 1
     }
 }
@@ -307,10 +301,10 @@ if ($selectedDevice.State -ne "Attached") {
         Write-Ok "Устройство уже подключено к WSL."
     }
     else {
-        Write-Info "Запуск: usbipd attach --wsl -b $BusId"
+        Write-Info "Запуск: usbipd attach --wsl --distribution $WslDistro -b $BusId"
         try {
-            usbipd attach --wsl -b $BusId 2>&1 | ForEach-Object { Write-Host "  $_" -ForegroundColor Gray }
-            Write-Ok "Команда attach выполнена."
+            usbipd attach --wsl --distribution $WslDistro -b $BusId 2>&1 | ForEach-Object { Write-Host "  $_" -ForegroundColor Gray }
+            Write-Ok "Команда attach выполнена (в дистрибутив $WslDistro)."
         }
         catch {
             Write-Err "Ошибка при attach: $_"
@@ -344,9 +338,9 @@ else {
 # ──────────────────────────────────────────────────────
 # Дополнительная проверка видимости в WSL
 # ──────────────────────────────────────────────────────
-Write-Step "Проверка видимости устройства в WSL..."
+Write-Step "Проверка видимости устройства в WSL (дистрибутив $WslDistro)..."
 try {
-    $wslCheck = wsl lsusb 2>&1
+    $wslCheck = wsl -d $WslDistro lsusb 2>&1
     if ($wslCheck -match $selectedDevice.Description -or $wslCheck -match $selectedDevice.VidPid) {
         Write-Ok "Устройство видно внутри WSL:"
         $wslCheck | ForEach-Object { Write-Host "  $_" -ForegroundColor Gray }

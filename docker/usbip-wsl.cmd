@@ -9,8 +9,12 @@ REM
 REM  Использование:
 REM    usbip-wsl.cmd
 REM    usbip-wsl.cmd -BusId 2-14
-REM    usbip-wsl.cmd -SkipUhdInit
+REM    usbip-wsl.cmd -BusId 2-14 -SkipUhdInit
 REM    usbip-wsl.cmd -VidPids @("1d50:6089")
+REM
+REM  ВАЖНО: для доступа к SDR из Docker-контейнеров Docker Desktop
+REM  устройство нужно прикреплять к виртуалке docker-desktop:
+REM    usbip-wsl.cmd -WslDistro docker-desktop
 REM
 REM  Все аргументы передаются напрямую в PowerShell-скрипт.
 REM ============================================================
@@ -22,29 +26,25 @@ REM Проверка существования PowerShell-скрипта
 if not exist "%PS_SCRIPT%" (
     echo [ERROR] Не найден скрипт: %PS_SCRIPT%
     echo [ERROR] Убедитесь, что usbip-wsl.ps1 находится в той же папке.
-    pause
     exit /b 1
 )
 
 REM Определяем политику выполнения
-set "PS_EXEC_POLICY=-ExecutionPolicy RemoteSigned -Scope Process"
+set "PS_EXEC_POLICY=-ExecutionPolicy Bypass"
 
 REM Собираем аргументы
 set "PS_ARGS=%*"
 
 REM Запуск PowerShell
 echo [INFO] Запуск usbip-wsl.ps1...
-powershell.exe %PS_EXEC_POLICY% -NoProfile -File "%PS_SCRIPT%" %PS_ARGS%
+powershell.exe %PS_EXEC_POLICY% -NoProfile -ExecutionPolicy Bypass -File "%PS_SCRIPT%" %PS_ARGS%
 
 if %ERRORLEVEL% neq 0 (
     echo.
-    echo [WARNING] Скрипт завершился с ошибкой (код: %ERRORLEVEL%).
-    echo Возможно, потребуется запустить этот bat-файл от имени администратора
-    echo для выполнения привязки устройства (bind).
-    pause
+    echo [WARNING] Скрипт завершился с ошибкой. Код: %ERRORLEVEL%.
     exit /b %ERRORLEVEL%
 )
 
 echo.
 echo [OK] Готово.
-pause
+exit /b 0

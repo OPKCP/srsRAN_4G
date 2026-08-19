@@ -1,0 +1,41 @@
+# Запуск локального стенда LTE: EPC + eNB
+# Использует существующую внешнюю сеть tr-network (172.18.0.0/24).
+# Запуск: docker compose -f docker-compose.run.yml up -d
+services:
+  epc:
+    container_name: epc
+    hostname: epc
+    image: ghcr.io/opkcp/srsran_4g:latest
+    command: srsepc
+    networks:
+      tr-network:
+        ipv4_address: 172.18.0.2
+    volumes:
+      - ..\srsran_configs:/etc/srsran:ro
+      - ..\logs:/var/log/srsran
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    restart: unless-stopped
+
+  enb:
+    container_name: enb
+    hostname: enb
+    image: ghcr.io/opkcp/srsran_4g:latest
+    command:
+      - srsenb
+      - /etc/srsran/enb.conf
+    networks:
+      tr-network:
+        ipv4_address: 172.18.0.3
+    volumes:
+      - ..\srsran_configs:/etc/srsran:ro
+      - ..\uhd_images:/usr/share/uhd/images
+      - ..\logs:/var/log/srsran
+    privileged: true
+    restart: unless-stopped
+
+networks:
+  tr-network:
+    external: true
