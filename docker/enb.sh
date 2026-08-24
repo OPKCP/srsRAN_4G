@@ -38,8 +38,9 @@ docker run --rm -it \
   --name enb \
   --hostname enb \
   -v "${CONFIG_DIR}:/root/.config/srsran:ro" \
+  -v "${CONFIG_DIR}:/etc/srsran:ro" \
   -v "${LOGS_DIR}:/var/log/srsran" \
-  -v "${UHD_IMAGES_DIR}:/usr/share/uhd/images" \
+  -v "${UHD_IMAGES_DIR}:/usr/share/uhd/images:ro" \
   --privileged \
   --network tr-network \
   --ip 172.18.0.3 \

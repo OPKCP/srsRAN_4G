@@ -47,12 +47,15 @@ if not exist "%LOGS_DIR%" (
 )
 
 REM Запуск контейнера enb
+REM -v CONFIG_DIR:/etc/srsran:ro перекрывает VOLUME /etc/srsran из образа,
+REM   чтобы Docker не создавал анонимный том (иначе растёт место на диске)
 docker run --rm -it ^
     --name enb ^
     --hostname enb ^
     -v "%CONFIG_DIR%:/root/.config/srsran:ro" ^
+    -v "%CONFIG_DIR%:/etc/srsran:ro" ^
     -v "%LOGS_DIR%:/var/log/srsran" ^
-    -v "%UHD_IMAGES_DIR%:/usr/share/uhd/images" ^
+    -v "%UHD_IMAGES_DIR%:/usr/share/uhd/images:ro" ^
     --privileged ^
     --network tr-network ^
     --ip 172.18.0.3 ^

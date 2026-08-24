@@ -19,6 +19,7 @@ if errorlevel 1 (
 REM Пути относительно каталога скрипта (docker/)
 set "CONFIG_DIR=%~dp0..\srsran_configs\prod\epc"
 set "LOGS_DIR=%~dp0..\logs"
+set "UHD_IMAGES_DIR=%~dp0..\uhd_images"
 
 REM Проверка каталога конфигов
 if not exist "%CONFIG_DIR%" (
@@ -40,11 +41,17 @@ if not exist "%LOGS_DIR%" (
 )
 
 REM Запуск контейнера epc
+REM -v CONFIG_DIR:/etc/srsran:ro перекрывает VOLUME /etc/srsran из образа,
+REM   чтобы Docker не создавал анонимный том (иначе растёт место на диске)
+REM -v UHD_IMAGES_DIR:/usr/share/uhd/images:ro перекрывает VOLUME /usr/share/uhd/images
+REM   (~470 МБ встроенных UHD images), предотвращая создание анонимного тома за запуск
 docker run --rm -it ^
    --name epc ^
    --hostname epc ^
    -v "%CONFIG_DIR%:/root/.config/srsran:ro" ^
+   -v "%CONFIG_DIR%:/etc/srsran:ro" ^
    -v "%LOGS_DIR%:/var/log/srsran" ^
+   -v "%UHD_IMAGES_DIR%:/usr/share/uhd/images:ro" ^
     --network tr-network ^
    --cap-add=NET_ADMIN ^
    --device=/dev/net/tun ^
