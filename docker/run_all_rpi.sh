@@ -48,17 +48,34 @@ docker run -d --name epc --hostname epc \
   -v "$LOGS_DIR:/var/log/srsran" \
   "$IMAGE" srsepc
 
+# Доступ абонентов (10.0.0.0/24, TUN srs_spgw_sgi) в Интернет через NAT.
+# Иначе телефон получает IP, но не может выйти в сеть. Правило живёт в контейнере EPC
+# (это сетевой namespace SPGW), поэтому добавляется именно туда.
+# Ждём готовности tun-интерфейса, затем включаем masquerade.
+for i in $(seq 1 20); do
+  if docker exec epc ip addr show srs_spgw_sgi >/dev/null 2>&1; then
+    break
+  fi
+  sleep 1
+done
+docker exec epc iptables -t nat -C POSTROUTING -s 10.0.0.0/24 -o eth0 -j MASQUERADE 2>/dev/null || \
+  docker exec epc iptables -t nat -A POSTROUTING -s 10.0.0.0/24 -o eth0 -j MASQUERADE
+echo "[OK] NAT для абонентов 10.0.0.0/24 настроен (доступ в Интернет)"
+
 echo "=== Запуск eNB (172.20.0.3) ==="
 docker rm -f enb 2>/dev/null || true
 docker run -d --name enb --hostname enb \
   --network "$NETWORK" --ip "$ENB_IP" \
   --privileged \
-  -e FFTW_WISDOM_FILE=/var/srsran/fftw/wisdom -e FFTW_PLAN_KEEP=1 \
+  # srsRAN читает/пишет FFTW wisdom в $HOME/.srsran_fftwisdom (см. lib/src/phy/dft/dft_fftw.c).
+  # Задаём HOME=/var/srsran и монтируем туда FFTW_DIR, чтобы кеш FFT сохранялся между рестартами
+  # и eNB не пересчитывал FFT-планы при каждом старте.
+  -e HOME=/var/srsran \
   -v "$CONFIG_ENB:/root/.config/srsran:ro" \
   -v "$CONFIG_ENB:/etc/srsran:ro" \
   -v "$LOGS_DIR:/var/log/srsran" \
   -v "$UHD_IMAGES_DIR:/usr/share/uhd/images:ro" \
-  -v "$FFTW_DIR:/var/srsran/fftw" \
+  -v "$FFTW_DIR:/var/srsran" \
   -v /dev/bus/usb:/dev/bus/usb \
   "$IMAGE" srsenb /root/.config/srsran/enb.conf
 
