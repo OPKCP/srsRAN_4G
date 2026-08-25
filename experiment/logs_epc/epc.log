@@ -1,0 +1,77 @@
+2026-08-25T11:10:27.279950 [EPC    ] [I] 
+
+Built in Release mode using 25.10.0.
+
+---  Software Radio Systems EPC log ---
+
+
+2026-08-25T11:10:27.279951 [EPC    ] [I] Using binary srsepc with arguments: 
+2026-08-25T11:10:27.281590 [HSS    ] [I] Opened DB file: /root/.config/srsran/user_db.csv
+2026-08-25T11:10:27.282858 [HSS    ] [D] Added user from DB, IMSI: 250630000000001
+2026-08-25T11:10:27.282859 [HSS    ] [D] User Key : 
+    0000: 00 11 22 33 44 55 66 77 88 99 aa bb cc dd ee ff
+2026-08-25T11:10:27.282861 [HSS    ] [D] User OPc : 
+    0000: 63 bf a5 0e e6 52 33 65 ff 14 c1 f4 5f 88 73 7d
+2026-08-25T11:10:27.282861 [HSS    ] [D] AMF : 
+    0000: 90 00
+2026-08-25T11:10:27.282862 [HSS    ] [D] SQN : 
+    0000: 00 00 00 00 49 35
+2026-08-25T11:10:27.282863 [HSS    ] [D] Default Bearer QCI: 9
+2026-08-25T11:10:27.283551 [HSS    ] [I] static ip addr 10.0.0.11
+2026-08-25T11:10:27.283566 [HSS    ] [D] Added user from DB, IMSI: 250630000000002
+2026-08-25T11:10:27.283567 [HSS    ] [D] User Key : 
+    0000: a1 b2 c3 d4 e5 f6 78 90 ab cd ef 12 34 56 78 90
+2026-08-25T11:10:27.283567 [HSS    ] [D] User OPc : 
+    0000: fe dc ba 98 76 54 32 10 01 23 45 67 89 ab cd ef
+2026-08-25T11:10:27.283567 [HSS    ] [D] AMF : 
+    0000: 90 00
+2026-08-25T11:10:27.283567 [HSS    ] [D] SQN : 
+    0000: 00 00 00 00 1a c7
+2026-08-25T11:10:27.283568 [HSS    ] [D] Default Bearer QCI: 9
+2026-08-25T11:10:27.283569 [HSS    ] [I] static ip addr 10.0.0.12
+2026-08-25T11:10:27.283572 [HSS    ] [D] Added user from DB, IMSI: 250630000000003
+2026-08-25T11:10:27.283572 [HSS    ] [D] User Key : 
+    0000: 12 34 56 78 90 ab cd ef 12 34 56 78 90 ab cd ef
+2026-08-25T11:10:27.283572 [HSS    ] [D] User OPc : 
+    0000: fe dc ba 98 76 54 32 10 fe dc ba 98 76 54 32 10
+2026-08-25T11:10:27.283572 [HSS    ] [D] AMF : 
+    0000: 90 00
+2026-08-25T11:10:27.283573 [HSS    ] [D] SQN : 
+    0000: 00 00 00 00 38 c5
+2026-08-25T11:10:27.283573 [HSS    ] [D] Default Bearer QCI: 9
+2026-08-25T11:10:27.283573 [HSS    ] [I] static ip addr 10.0.0.13
+2026-08-25T11:10:27.283576 [HSS    ] [D] Added user from DB, IMSI: 250630000000004
+2026-08-25T11:10:27.283576 [HSS    ] [D] User Key : 
+    0000: 12 34 56 78 90 ab cd ef 12 34 56 78 90 ab cd e4
+2026-08-25T11:10:27.283576 [HSS    ] [D] User OPc : 
+    0000: fe dc ba 98 76 54 32 10 fe dc ba 98 76 54 32 14
+2026-08-25T11:10:27.283576 [HSS    ] [D] AMF : 
+    0000: 90 00
+2026-08-25T11:10:27.283576 [HSS    ] [D] SQN : 
+    0000: 00 00 00 00 1a c4
+2026-08-25T11:10:27.283577 [HSS    ] [D] Default Bearer QCI: 9
+2026-08-25T11:10:27.283577 [HSS    ] [I] static ip addr 10.0.0.14
+2026-08-25T11:10:27.284019 [HSS    ] [D] Added user from DB, IMSI: 250630000000005
+2026-08-25T11:10:27.284020 [HSS    ] [D] User Key : 
+    0000: 12 34 56 78 90 ab cd ef 12 34 56 78 90 ab cd e5
+2026-08-25T11:10:27.284020 [HSS    ] [D] User OPc : 
+    0000: fe dc ba 98 76 54 32 10 fe dc ba 98 76 54 32 15
+2026-08-25T11:10:27.284020 [HSS    ] [D] AMF : 
+    0000: 90 00
+2026-08-25T11:10:27.284021 [HSS    ] [D] SQN : 
+    0000: 00 00 00 00 1a c5
+2026-08-25T11:10:27.284021 [HSS    ] [D] Default Bearer QCI: 9
+2026-08-25T11:10:27.284022 [HSS    ] [I] static ip addr 10.0.0.15
+2026-08-25T11:10:27.284389 [HSS    ] [I] HSS Initialized. DB file /root/.config/srsran/user_db.csv, MCC: 62032, MNC: 65379
+2026-08-25T11:10:27.284755 [S1AP   ] [I] S1-MME Initializing
+2026-08-25T11:10:27.284838 [COMN   ] [D] [    0] Successfully bound to address 0.0.0.0:36412
+2026-08-25T11:10:27.284893 [S1AP   ] [I] S1AP Initialized
+2026-08-25T11:10:27.284895 [MME GTPC] [I] Initializing MME S11 interface.
+2026-08-25T11:10:27.284903 [MME GTPC] [I] MME S11 Initialized
+2026-08-25T11:10:27.284919 [MME GTPC] [I] MME GTP-C Initialized
+2026-08-25T11:10:27.284920 [S1AP   ] [I] MME Initialized. MCC: 0xf250, MNC: 0xff63
+2026-08-25T11:10:27.285389 [GTPU   ] [I] TUN file descriptor = 6
+2026-08-25T11:10:27.285849 [GTPU   ] [I] Initialized SGi interface
+2026-08-25T11:10:27.285859 [GTPU   ] [I] S1-U socket = 7
+2026-08-25T11:10:27.285863 [GTPU   ] [I] S1-U IP = 0.0.0.0, Port = 2152 
+2026-08-25T11:10:27.285863 [GTPU   ] [I] Initialized S1
