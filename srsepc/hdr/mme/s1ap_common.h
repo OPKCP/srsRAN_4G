@@ -47,6 +47,7 @@ typedef struct {
   std::string                         full_net_name;
   std::string                         short_net_name;
   std::string                         mme_apn;
+  uint8_t                             time_zone; // NITZ timezone (quarters of hour from UTC, e.g. 12 = UTC+3)
   bool                                pcap_enable;
   std::string                         pcap_filename;
   srsran::CIPHERING_ALGORITHM_ID_ENUM encryption_algo;

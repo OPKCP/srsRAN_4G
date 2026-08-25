@@ -82,6 +82,7 @@ void s1ap_nas_transport::init()
   m_nas_init.cipher_algo    = m_s1ap->m_s1ap_args.encryption_algo;
   m_nas_init.request_imeisv = m_s1ap->m_s1ap_args.request_imeisv;
   m_nas_init.lac            = m_s1ap->m_s1ap_args.lac;
+  m_nas_init.time_zone      = m_s1ap->m_s1ap_args.time_zone;
 
   // Init NAS interface
   m_nas_if.s1ap = s1ap::get_instance();

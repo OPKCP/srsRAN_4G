@@ -47,7 +47,8 @@ nas::nas(const nas_init_t& args, const nas_if_t& itf) :
   m_short_net_name(args.short_net_name),
   m_t3413(args.paging_timer),
   m_request_imeisv(args.request_imeisv),
-  m_lac(args.lac)
+  m_lac(args.lac),
+  m_time_zone(args.time_zone)
 {
   m_sec_ctx.integ_algo  = args.integ_algo;
   m_sec_ctx.cipher_algo = args.cipher_algo;
@@ -1667,7 +1668,7 @@ bool nas::pack_emm_information(srsran::byte_buffer_t* nas_buffer)
     emm_info.utc_and_local_time_zone.hour    = broken_down_time.tm_hour;
     emm_info.utc_and_local_time_zone.minute  = broken_down_time.tm_min;
     emm_info.utc_and_local_time_zone.second  = broken_down_time.tm_sec;
-    emm_info.utc_and_local_time_zone.tz      = 0;
+    emm_info.utc_and_local_time_zone.tz      = m_time_zone;
     emm_info.utc_and_local_time_zone_present = true;
   } else {
     m_logger.error("Error getting current time: %s", strerror(errno));

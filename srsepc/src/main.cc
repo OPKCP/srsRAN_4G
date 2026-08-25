@@ -86,6 +86,7 @@ void parse_args(all_args_t* args, int argc, char* argv[])
   string   encryption_algo;
   string   integrity_algo;
   uint16_t paging_timer     = 0;
+  int      time_zone        = 0;
   uint32_t max_paging_queue = 0;
   string   spgw_bind_addr;
   string   sgi_if_addr;
@@ -124,6 +125,7 @@ void parse_args(all_args_t* args, int argc, char* argv[])
     ("mme.encryption_algo", bpo::value<string>(&encryption_algo)->default_value("EEA0"),     "Set preferred encryption algorithm for NAS layer ")
     ("mme.integrity_algo",  bpo::value<string>(&integrity_algo)->default_value("EIA1"),      "Set preferred integrity protection algorithm for NAS")
     ("mme.paging_timer",    bpo::value<uint16_t>(&paging_timer)->default_value(2),           "Set paging timer value in seconds (T3413)")
+    ("mme.time_zone",       bpo::value<int>(&time_zone)->default_value(0),                    "NITZ time zone offset from UTC in quarters of hour (e.g. 12 = UTC+3, Moscow)")
     ("mme.request_imeisv",  bpo::value<bool>(&request_imeisv)->default_value(false),         "Enable IMEISV request in Security mode command")
     ("mme.lac",             bpo::value<string>(&lac)->default_value("0x01"),                 "Location Area Code")
     ("hss.db_file",         bpo::value<string>(&hss_db_file)->default_value("ue_db.csv"),    ".csv file that stores UE's keys")
@@ -226,6 +228,7 @@ void parse_args(all_args_t* args, int argc, char* argv[])
   }
   args->mme_args.s1ap_args.tac = std::stoi(vm["mme.tac"].as<std::string>(), nullptr, 0);
   args->mme_args.s1ap_args.lac = std::stoi(vm["mme.lac"].as<std::string>(), nullptr, 0);
+  args->mme_args.s1ap_args.time_zone = static_cast<uint8_t>(time_zone);
 
   // Convert MCC/MNC strings
   if (!srsran::string_to_mcc(mcc, &args->mme_args.s1ap_args.mcc)) {
