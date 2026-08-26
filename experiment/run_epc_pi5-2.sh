@@ -37,11 +37,20 @@ for i in $(seq 1 20); do
   docker exec "$NAME" ip addr show srs_spgw_sgi >/dev/null 2>&1 && break
   sleep 1
 done
-# NAT (MASQUERADE) для выхода в интернет через eth0
-o=$(ip route 2>/dev/null | awk '/default/{print $NF;exit}')
-[ -z "$o" ] && o="eth0"
+# NAT (MASQUERADE) для выхода в интернет через eth0.
+# Интерфейс определяем ВНУТРИ контейнера epc (network host), чтобы получить имя
+# (напр. "eth0"), а не индекс. Если определение неудачно — fallback eth0.
+o=$(docker exec "$NAME" sh -c "ip route 2>/dev/null | awk '/default/{print \$NF;exit}'" | tr -d '\r\n')
+# Валидируем: имя интерфейса должно быть непустым, не выглядеть как голый номер/индекс (число)
+if [ -z "$o" ] || ! echo "$o" | grep -qE '^[a-z]'; then
+  o="eth0"
+fi
+# Удаляем любые ранее установленные ошибочные правила MASQUERADE для 10.0.0.0/24
+docker exec "$NAME" iptables -t nat -D POSTROUTING -s 10.0.0.0/24 -o 100 -j MASQUERADE 2>/dev/null || true
+# Добавляем корректное правило (idempotently)
 docker exec "$NAME" iptables -t nat -C POSTROUTING -s 10.0.0.0/24 -o "$o" -j MASQUERADE 2>/dev/null || \
   docker exec "$NAME" iptables -t nat -A POSTROUTING -s 10.0.0.0/24 -o "$o" -j MASQUERADE
+echo "[OK] MASQUERADE: -o $o (интерфейс выхода в интернет)"
 # ВАЖНО: контейнер в --network host наследует docker iptables с FORWARD policy DROP.
 # Без разрешения форвардинга абонентские пакеты (srs_spgw_sgi -> eth0) сбрасываются,
 # интернет не работает (MASQUERADE счётчик 0). Разрешаем FORWARD для 10.0.0.0/24.
