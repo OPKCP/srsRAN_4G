@@ -1,0 +1,31 @@
+# docker-compose для srsran-dashboard.
+# Использование:
+#   Режим EPC (парсит лог ядра, например experiment/logs_epc):
+#     docker compose -f docker-compose.yml run --rm -e DASH_MODE=epc \
+#       -v ./logs_epc:/logs -p 5000:5000 dashboard
+#
+#   Режим eNB (парсит лог eNB + метрики enb_report.json):
+#     docker compose -f docker-compose.yml run --rm -e DASH_MODE=enb \
+#       -v ./logs_enb:/logs -p 5000:5000 dashboard
+#
+# Более привычные скрипты-обёртки — см. scripts/ (run_dashboard_win.ps1 и .sh).
+services:
+  dashboard:
+    build: .
+    image: srsran-dashboard:latest
+    container_name: srsran-dashboard
+    environment:
+      DASH_MODE: "${DASH_MODE:-epc}"
+      DASH_LOG_DIR: /logs
+      DASH_PORT: "5000"
+      # имена файлов внутри каталога логов:
+      DASH_EPC_LOG: "${DASH_EPC_LOG:-epc.log}"
+      DASH_ENB_LOG: "${DASH_ENB_LOG:-enb.log}"
+      DASH_ENB_METRICS: "${DASH_ENB_METRICS:-enb_report.json}"
+      DASH_USER_DB: "${DASH_USER_DB:-user_db.csv}"
+    volumes:
+      # каталог логов пробрасывается на хост (правьте путь под свой стенд)
+      - "${DASH_LOG_HOST:-./logs}:/logs"
+    ports:
+      - "${DASH_BIND:-0.0.0.0}:5000:5000"
+    restart: unless-stopped

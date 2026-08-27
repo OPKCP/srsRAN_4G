@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Дашборд стенда srsRAN 4G</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body data-mode="{{ mode }}">
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">📡</span>
+    <span>SRS RAN 4G</span>
+    <span class="mode-badge" id="mode-badge"></span>
+  </div>
+  <div class="status-line">
+    <span id="conn-status" class="pill gray">подключение…</span>
+    <span id="uptime" class="pill"></span>
+    <span class="pill" id="log-state"></span>
+  </div>
+</header>
+
+<main class="grid">
+
+  <!-- Сводка -->
+  <section class="card summary">
+    <h2>Сводка</h2>
+    <div class="kpis">
+      <div class="kpi"><div class="kpi-val" id="kpi-attached">0</div><div class="kpi-lbl">Абонентов подключено</div></div>
+      <div class="kpi"><div class="kpi-val" id="kpi-subscribers">0</div><div class="kpi-lbl">Абонентов известно</div></div>
+      <div class="kpi"><div class="kpi-val" id="kpi-bs">0</div><div class="kpi-lbl">Базовых станций</div></div>
+      <div class="kpi"><div class="kpi-val" id="kpi-active-ue">0</div><div class="kpi-lbl">Активных UE (радио)</div></div>
+    </div>
+  </section>
+
+  <!-- Абоненты -->
+  <section class="card">
+    <h2>Абоненты (клиенты)</h2>
+    <table class="data">
+      <thead>
+        <tr>
+          <th>IMSI</th>
+          <th>IP</th>
+          <th>Состояние</th>
+          <th>eNB-UE S1AP</th>
+          <th>Подключён</th>
+          <th>Активен</th>
+        </tr>
+      </thead>
+      <tbody id="subs-body">
+        <tr><td colspan="6" class="empty">Загрузка…</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Базовые станции -->
+  <section class="card">
+    <h2>Базовые станции</h2>
+    <table class="data">
+      <thead>
+        <tr>
+          <th>Имя</th>
+          <th>eNB ID</th>
+          <th>Подключена</th>
+          <th>Видимость</th>
+        </tr>
+      </thead>
+      <tbody id="bs-body">
+        <tr><td colspan="4" class="empty">Нет данных</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Активные UE (метрики радио, режим eNB) -->
+  <section class="card" id="radio-card" style="display:none">
+    <h2>Активные UE — метрики радио (eNB)</h2>
+    <table class="data">
+      <thead>
+        <tr>
+          <th>RNTI</th>
+          <th>DL CQI</th>
+          <th>DL MCS</th>
+          <th>UL MCS</th>
+          <th>DL, кбит/с</th>
+          <th>UL, кбит/с</th>
+          <th>DL BLER</th>
+          <th>UL SNR, дБ</th>
+        </tr>
+      </thead>
+      <tbody id="radio-body">
+        <tr><td colspan="8" class="empty">Нет активных UE</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- События -->
+  <section class="card">
+    <h2>События</h2>
+    <div class="events" id="events">
+      <div class="event">Загрузка…</div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <span>Обновлено: <b id="updated">—</b></span>
+  <span class="muted">Данные парсятся из логов в реальном времени (SSE)</span>
+</footer>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
