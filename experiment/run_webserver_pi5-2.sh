@@ -32,8 +32,11 @@ docker rm -f "$NAME" >/dev/null 2>&1 || true
 echo "[OK] Удалён старый контейнер $NAME"
 
 # --- Запуск веб-сервера в namespace epc с монтированием каталога ---
+# --restart unless-stopped: авто-перезапуск при падении/перезагрузке докера,
+# останавливается только при явном ручном `docker stop`/`docker rm`.
 docker run -d --name "$NAME" \
   --network container:epc \
+  --restart unless-stopped \
   -v "$SERVE_DIR:/serve:ro" \
   -w /serve \
   "$IMG" python3 -m http.server "$PORT" --bind 0.0.0.0
