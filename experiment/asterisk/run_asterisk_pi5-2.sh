@@ -37,6 +37,7 @@ fi
 
 docker run -d --name "$NAME" \
   --network container:epc \
+  --restart unless-stopped \
   -v "$CONF/pjsip.conf:/etc/asterisk/pjsip.conf:ro" \
   -v "$CONF/extensions.conf:/etc/asterisk/extensions.conf:ro" \
   "$IMG"

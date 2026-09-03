@@ -20,10 +20,12 @@ docker rm -f "$NAME" >/dev/null 2>&1 || true
 echo "[OK] Удалён старый контейнер $NAME"
 
 # --- Запуск EPC (network host) ---
+# --restart unless-stopped: авто-перезапуск ядра при падении/перезагрузке, останавливается только явным docker stop.
 docker run -d --name "$NAME" --hostname "$NAME" \
   --network host \
   --cap-add=NET_ADMIN \
   --device=/dev/net/tun \
+  --restart unless-stopped \
   -v "$CONFIG:/root/.config/srsran:ro" \
   -v "$CONFIG:/etc/srsran:ro" \
   -v "$LOGS:/var/log/srsran" \

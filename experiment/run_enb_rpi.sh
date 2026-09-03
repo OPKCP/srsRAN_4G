@@ -21,9 +21,11 @@ docker rm -f "$NAME" >/dev/null 2>&1 || true
 echo "[OK] Удалён старый контейнер $NAME"
 
 # --- Запуск eNB ---
+# --restart unless-stopped: авто-перезапуск при падении/перезагрузке, останавливается только явным docker stop.
 docker run -d --name "$NAME" --hostname "$NAME" \
   --network host \
   --privileged \
+  --restart unless-stopped \
   -e HOME=/var/srsran \
   -v "$CONFIG:/root/.config/srsran:ro" \
   -v "$CONFIG:/etc/srsran:ro" \
