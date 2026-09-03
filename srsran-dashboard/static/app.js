@@ -17,6 +17,9 @@
     events: document.getElementById("events"),
     radioCard: document.getElementById("radio-card"),
     radioBody: document.getElementById("radio-body"),
+    controlCard: document.getElementById("control-card"),
+    controlList: document.getElementById("control-list"),
+    controlMsg: document.getElementById("control-msg"),
   };
 
   const mode = document.body.dataset.mode || "epc";
@@ -173,11 +176,88 @@
     };
   }
 
+  // ---------------------------------------------------------------------
+  // Управление контейнерами
+  // ---------------------------------------------------------------------
+  const stateLabel = { running: "работает", exited: "остановлен", created: "создан", paused: "пауза" };
+  const stateCls = { running: "green", exited: "red", created: "gray", paused: "gray" };
+
+  async function refreshControl() {
+    try {
+      const r = await fetch("/api/control");
+      const data = await r.json();
+      renderControl(data);
+    } catch (e) {
+      els.controlMsg.textContent = "Управление недоступно: " + e;
+    }
+  }
+
+  function renderControl(data) {
+    const list = els.controlList;
+    const msg = els.controlMsg;
+    if (!data || !data.ok) {
+      msg.textContent = "Управление недоступно: " + (data && data.error ? data.error : "нет данных");
+      return;
+    }
+    msg.textContent = "";
+    const containers = data.containers || [];
+    els.controlCard.style.display = "block";
+    if (containers.length === 0) {
+      list.innerHTML = '<div class="ctl-item">Нет управляемых контейнеров на этом узле</div>';
+      return;
+    }
+    list.innerHTML = containers.map(function (c) {
+      const cls = stateCls[c.state] || "gray";
+      return '<div class="ctl-item" data-name="' + c.name + '">' +
+        '<span class="ctl-name">' + c.name + '</span>' +
+        '<span class="pill ' + cls + '">' + (stateLabel[c.state] || c.state) + '</span>' +
+        '<span class="ctl-img">' + c.image + '</span>' +
+        '<span class="ctl-btns">' +
+        '<button class="btn" data-act="start">▶ Запустить</button>' +
+        '<button class="btn" data-act="stop">⏹ Остановить</button>' +
+        '<button class="btn" data-act="restart">↻ Перезапуск</button>' +
+        '</span></div>';
+    }).join("");
+  }
+
+  async function sendAction(name, action) {
+    const msg = els.controlMsg;
+    msg.textContent = "Выполняется: " + action + " контейнера " + name + " …";
+    try {
+      const r = await fetch("/api/control/" + encodeURIComponent(name) + "/" + action, { method: "POST" });
+      const data = await r.json();
+      if (data.ok) {
+        msg.textContent = "✅ " + name + ": " + action + " выполнен";
+      } else {
+        msg.textContent = "❌ " + name + ": " + (data.error || "ошибка");
+      }
+    } catch (e) {
+      msg.textContent = "❌ Ошибка: " + e;
+    }
+    // обновить статусы
+    setTimeout(refreshControl, 1500);
+  }
+
+  function bindControlClicks() {
+    els.controlList.addEventListener("click", function (ev) {
+      const btn = ev.target.closest("button.btn[data-act]");
+      if (!btn) return;
+      const item = btn.closest("[data-name]");
+      if (!item) return;
+      if (!window.confirm("Подтвердите: " + btn.dataset.act + " контейнер " + item.dataset.name + "?")) return;
+      sendAction(item.dataset.name, btn.dataset.act);
+    });
+  }
+
+  // ---------------------------------------------------------------------
+
   // начальная загрузка
   loadSnapshot();
   loadSubscribers();
   loadEvents();
   connectSSE();
+  refreshControl();
+  bindControlClicks();
 
   // периодическое обновление списка абонентов (лексически в дополнение к SSE)
   setInterval(loadSubscribers, 5000);

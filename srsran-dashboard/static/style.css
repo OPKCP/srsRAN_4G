@@ -137,3 +137,31 @@ footer {
 }
 
 .muted { color: var(--muted); }
+
+/* ---- Управление контейнерами ---- */
+.ctl-list { display: flex; flex-direction: column; gap: 8px; }
+.ctl-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+.ctl-name { font-weight: 600; font-size: 14px; min-width: 90px; }
+.ctl-img { color: var(--muted); font-size: 12px; flex: 1; min-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ctl-btns { display: flex; gap: 6px; }
+.btn {
+  border: 1px solid var(--border);
+  background: var(--pill-bg);
+  color: var(--text);
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.15s;
+}
+.btn:hover { background: rgba(79,140,255,0.2); border-color: var(--accent); }
+.ctl-msg { margin-top: 10px; min-height: 18px; font-size: 13px; }

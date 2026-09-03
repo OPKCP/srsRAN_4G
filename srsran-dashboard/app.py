@@ -21,6 +21,7 @@ import time
 from flask import Flask, Response, jsonify, render_template, request
 
 import config
+import control
 from parser import EpcParser, EnbParser
 from state import Store
 
@@ -132,6 +133,23 @@ def api_stream():
     return Response(generate(), mimetype="text/event-stream",
                     headers={"Cache-Control": "no-cache",
                              "X-Accel-Buffering": "no"})
+
+
+# ---------------------------------------------------------------------------
+# Управление контейнерами (запуск/остановка/перезапуск через Docker API)
+# ---------------------------------------------------------------------------
+@app.route("/api/control")
+def api_control():
+    """Список управляемых контейнеров на этом узле."""
+    return jsonify(control.list_control())
+
+
+@app.route("/api/control/<name>/<action>", methods=["POST"])
+def api_control_action(name, action):
+    """Выполнить действие start|stop|restart над контейнером на этом узле."""
+    res = control.action(name, action)
+    status_code = 200 if res.get("ok") else 400
+    return jsonify(res), status_code
 
 
 # ---------------------------------------------------------------------------

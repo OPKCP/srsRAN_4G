@@ -53,15 +53,17 @@ fi
 docker rm -f "$NAME" >/dev/null 2>&1 || true
 
 echo "[..] Запуск контейнера $NAME …"
+# Монтируем docker.sock, чтобы дашборд мог управлять контейнерами на этом узле.
 docker run -d --name "$NAME" --restart unless-stopped \
   -e DASH_MODE="$MODE" \
   -e DASH_LOG_DIR=/logs \
   -e DASH_PORT="$PORT" \
   -v "$LOGDIR:/logs" \
+  -v /var/run/docker.sock:/var/run/docker.sock \
   -p "${PORT}:${PORT}" \
   srsran-dashboard:latest
 
 echo ""
 echo "[OK] Дашборд запущен:  http://<host>:$PORT"
-echo "[OK] Контейнер: $NAME (режим $MODE, логи $LOGDIR)"
+echo "[OK] Контейнер: $NAME (режим $MODE, логи $LOGDIR, управление Docker: вкл)"
 docker ps --filter "name=$NAME" --format "{{.Names}}\t{{.Status}}"
