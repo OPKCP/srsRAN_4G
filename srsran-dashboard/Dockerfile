@@ -15,7 +15,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Копируем приложение
-COPY config.py app.py control.py state.py ./
+COPY config.py app.py control.py userdb.py state.py ./
 COPY parser ./parser
 COPY templates ./templates
 COPY static ./static

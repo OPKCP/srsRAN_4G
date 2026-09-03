@@ -20,6 +20,19 @@
     controlCard: document.getElementById("control-card"),
     controlList: document.getElementById("control-list"),
     controlMsg: document.getElementById("control-msg"),
+    // редактор абонентов HSS
+    userdbCard: document.getElementById("userdb-card"),
+    userdbBody: document.getElementById("userdb-body"),
+    userdbMsg: document.getElementById("userdb-msg"),
+    userdbAddBtn: document.getElementById("userdb-add-btn"),
+    userdbModal: document.getElementById("userdb-modal"),
+    userdbModalTitle: document.getElementById("userdb-modal-title"),
+    userdbFields: document.getElementById("userdb-fields"),
+    userdbFormMsg: document.getElementById("userdb-form-msg"),
+    userdbModalSave: document.getElementById("userdb-modal-save"),
+    userdbModalCancel: document.getElementById("userdb-modal-cancel"),
+    userdbRestartWarn: document.getElementById("userdb-restart-warn"),
+    userdbRestartBtn: document.getElementById("userdb-restart-btn"),
   };
 
   const mode = document.body.dataset.mode || "epc";
@@ -250,6 +263,184 @@
   }
 
   // ---------------------------------------------------------------------
+  // Редактор абонентов HSS (user_db.csv) — epc-режим
+  // ---------------------------------------------------------------------
+  let userdbFieldsMeta = [];
+  let userdbDefaults = {};
+  let userdbEditing = null;   // текущий IMSI при редактировании, null при создании
+  let userdbEditingRec = null;
+
+  async function loadUserdb() {
+    try {
+      const r = await fetch("/api/userdb");
+      if (r.status === 403) { return; } // не epc-режим
+      const data = await r.json();
+      if (!data || !data.ok) { return; }
+      userdbFieldsMeta = data.fields || [];
+      userdbDefaults = {};
+      data.fields.forEach(function (f) { userdbDefaults[f.key] = f.default; });
+      els.userdbCard.style.display = "block";
+      renderUserdb(data.records || []);
+      // плашка про перезапуск ядра
+      els.userdbRestartWarn.style.display = data.pending_restart ? "block" : "none";
+    } catch (e) { /* ignore */ }
+  }
+
+  function renderUserdb(records) {
+    if (records.length === 0) {
+      els.userdbBody.innerHTML = '<tr><td colspan="6" class="empty">Нет записей. Добавьте абонента.</td></tr>';
+      return;
+    }
+    els.userdbBody.innerHTML = records.map(function (rec) {
+      const statusCls = rec.enabled ? "green" : "red";
+      const statusTxt = rec.enabled ? "активна" : "выключена";
+      return '<tr data-imsi="' + rec.imsi + '" class="' + (rec.enabled ? "" : "row-disabled") + '">' +
+        "<td>" + esc(rec.name) + "</td>" +
+        "<td>" + esc(rec.imsi) + "</td>" +
+        "<td>" + esc(rec.auth) + "</td>" +
+        "<td>" + esc(rec.ip) + "</td>" +
+        '<td><span class="pill ' + statusCls + '">' + statusTxt + "</span></td>" +
+        '<td class="ctl-btns">' +
+        '<button class="btn" data-userdb="edit">✎ Изменить</button>' +
+        (rec.enabled
+          ? '<button class="btn" data-userdb="disable">⏸ Выключить</button>'
+          : '<button class="btn" data-userdb="enable">▶ Включить</button>') +
+        '<button class="btn danger" data-userdb="delete">🗑 Удалить</button>' +
+        "</td></tr>";
+    }).join("");
+  }
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function openUserdbForm(mode, rec) {
+    userdbEditing = mode === "edit" ? rec.imsi : null;
+    userdbEditingRec = rec || null;
+    els.userdbFormMsg.textContent = "";
+    els.userdbModalTitle.textContent = mode === "edit"
+      ? ("Редактирование абонента " + rec.name) : "Новый абонент";
+
+    // значения: для редактирования — из записи; для создания — значения по умолчанию
+    const values = {};
+    userdbFieldsMeta.forEach(function (f) {
+      if (mode === "edit") {
+        values[f.key] = rec[f.key] !== undefined ? rec[f.key] : f.default;
+      } else {
+        values[f.key] = f.default;
+      }
+    });
+
+    els.userdbFields.innerHTML = userdbFieldsMeta.map(function (f) {
+      return '<div class="field">' +
+        '<label>' + esc(f.label) + '</label>' +
+        '<input type="text" name="' + f.key + '" value="' + esc(values[f.key]) + '">' +
+        '<span class="field-desc">' + esc(f.desc) + '</span>' +
+        "</div>";
+    }).join("");
+
+    els.userdbModal.style.display = "flex";
+  }
+
+  function closeUserdbForm() {
+    els.userdbModal.style.display = "none";
+  }
+
+  function collectUserdbForm() {
+    const out = {};
+    els.userdbFields.querySelectorAll("input").forEach(function (inp) {
+      out[inp.name] = inp.value.trim();
+    });
+    return out;
+  }
+
+  async function saveUserdbForm() {
+    const values = collectUserdbForm();
+    const msgEl = els.userdbFormMsg;
+
+    if (userdbEditing === null) {
+      // создание: проверяем, что хотя бы одно поле отличается от значений по умолчанию
+      let changed = false;
+      userdbFieldsMeta.forEach(function (f) {
+        if ((values[f.key] || "") !== (userdbDefaults[f.key] || "")) changed = true;
+      });
+      if (!changed) {
+        msgEl.textContent = "⚠️ Не изменены данные — вы создаёте абонента с теми же значениями по умолчанию. Пожалуйста, заполните/измените поля формы.";
+        msgEl.style.color = "var(--warn)";
+        return;
+      }
+    }
+
+    msgEl.textContent = "Сохранение…";
+    msgEl.style.color = "";
+    try {
+      let url = "/api/userdb";
+      let method = "POST";
+      if (userdbEditing !== null) { url = "/api/userdb/" + encodeURIComponent(userdbEditing); method = "PUT"; }
+      const r = await fetch(url, { method: method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) });
+      const data = await r.json();
+      if (data.ok) {
+        closeUserdbForm();
+        els.userdbMsg.textContent = "✅ Сохранено. Требуется перезапуск ядра для применения.";
+        loadUserdb();
+      } else {
+        msgEl.textContent = "❌ " + (data.error || "ошибка");
+        msgEl.style.color = "var(--err)";
+      }
+    } catch (e) {
+      msgEl.textContent = "❌ Ошибка сети: " + e;
+    }
+  }
+
+  async function userdbAction(ev) {
+    const btn = ev.target.closest("button[data-userdb]");
+    if (!btn) return;
+    const tr = btn.closest("tr[data-imsi]");
+    if (!tr) return;
+    const imsi = tr.dataset.imsi;
+    const act = btn.dataset.userdb;
+
+    if (act === "edit") {
+      const rec = await fetch("/api/userdb/" + encodeURIComponent(imsi)).then(function (r) { return r.json(); });
+      if (rec && rec.ok) { openUserdbForm("edit", rec.record); }
+      return;
+    }
+    if (act === "delete") {
+      if (!window.confirm("Удалить абонента " + imsi + "?")) return;
+      const r = await fetch("/api/userdb/" + encodeURIComponent(imsi), { method: "DELETE" });
+      const data = await r.json();
+      els.userdbMsg.textContent = data.ok ? "✅ Удалено. Нужен перезапуск ядра." : ("❌ " + (data.error || "ошибка"));
+      loadUserdb();
+      return;
+    }
+    if (act === "enable" || act === "disable") {
+      const r = await fetch("/api/userdb/" + encodeURIComponent(imsi) + "/" + act, { method: "POST" });
+      const data = await r.json();
+      els.userdbMsg.textContent = data.ok ? "✅ Статус изменён. Нужен перезапуск ядра." : ("❌ " + (data.error || "ошибка"));
+      loadUserdb();
+      return;
+    }
+  }
+
+  function bindUserdb() {
+    if (!els.userdbCard) return; // элемент может отсутствовать
+    els.userdbCard.addEventListener("click", userdbAction);
+    els.userdbAddBtn.addEventListener("click", function () { openUserdbForm("new"); });
+    els.userdbModalSave.addEventListener("click", saveUserdbForm);
+    els.userdbModalCancel.addEventListener("click", closeUserdbForm);
+    // перезапуск ядра после изменения БД
+    els.userdbRestartBtn.addEventListener("click", async function () {
+      if (!window.confirm("Перезапустить ядро (epc)? Применятся изменения абонентов.")) return;
+      const r = await fetch("/api/control/epc/restart", { method: "POST" });
+      const data = await r.json();
+      // сбросить флаг pending-restart
+      if (data.ok) { await fetch("/api/userdb/restart/done", { method: "POST" }); loadUserdb(); }
+    });
+  }
+
+  // ---------------------------------------------------------------------
 
   // начальная загрузка
   loadSnapshot();
@@ -258,6 +449,7 @@
   connectSSE();
   refreshControl();
   bindControlClicks();
+  if (mode === "epc") { loadUserdb(); bindUserdb(); }
 
   // периодическое обновление списка абонентов (лексически в дополнение к SSE)
   setInterval(loadSubscribers, 5000);

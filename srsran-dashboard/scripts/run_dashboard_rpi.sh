@@ -17,6 +17,7 @@ LOGDIR=""
 PORT=5000
 NAME="srsran-dashboard"
 REBUILD=0
+USERDBDIR=""   # каталог с user_db.csv (для epc-режима, редактирование абонентов)
 
 # --- разбор аргументов ---
 while [[ $# -gt 0 ]]; do
@@ -25,6 +26,7 @@ while [[ $# -gt 0 ]]; do
     --logdir) LOGDIR="$2"; shift 2 ;;
     --port)  PORT="$2"; shift 2 ;;
     --name)  NAME="$2"; shift 2 ;;
+    --userdb) USERDBDIR="$2"; shift 2 ;;
     --rebuild) REBUILD=1; shift ;;
     *) echo "Неизвестный аргумент: $1"; exit 1 ;;
   esac
@@ -53,13 +55,21 @@ fi
 docker rm -f "$NAME" >/dev/null 2>&1 || true
 
 echo "[..] Запуск контейнера $NAME …"
-# Монтируем docker.sock, чтобы дашборд мог управлять контейнерами на этом узле.
+# Доп. аргументы docker: docker.sock для управления, user_db.csv для epc-редактора.
+DOCKER_EXTRA=(
+  -v /var/run/docker.sock:/var/run/docker.sock
+)
+if [[ -n "$USERDBDIR" ]]; then
+  DOCKER_EXTRA+=( -e DASH_USERDB_DIR=/userdb -v "$USERDBDIR:/userdb:rw" )
+  echo "[OK] Редактор абонентов: $USERDBDIR/user_db.csv (rw)"
+fi
+
 docker run -d --name "$NAME" --restart unless-stopped \
   -e DASH_MODE="$MODE" \
   -e DASH_LOG_DIR=/logs \
   -e DASH_PORT="$PORT" \
   -v "$LOGDIR:/logs" \
-  -v /var/run/docker.sock:/var/run/docker.sock \
+  "${DOCKER_EXTRA[@]}" \
   -p "${PORT}:${PORT}" \
   srsran-dashboard:latest
 

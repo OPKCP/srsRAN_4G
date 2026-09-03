@@ -33,6 +33,10 @@ class Config:
     # user_db.csv ядра — список известных SIM. Опционально, для показа "всех SIM".
     USER_DB_FILE = os.environ.get("DASH_USER_DB", "user_db.csv")
 
+    # Каталог с user_db.csv на хосте (пробрасывается в контейнер в epc-режиме
+    # для редактирования списка абонентов). Пустой → редактирование отключено.
+    USERDB_DIR = os.environ.get("DASH_USERDB_DIR", "/userdb")
+
     # Как часто парсер обновляет состояние (сек)
     PARSE_INTERVAL = _int("DASH_PARSE_INTERVAL", 2)
 

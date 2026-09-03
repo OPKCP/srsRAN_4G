@@ -103,6 +103,49 @@
     <div id="control-msg" class="ctl-msg"></div>
   </section>
 
+  <!-- Редактор абонентов HSS (user_db.csv) — только epc-режим -->
+  <section class="card" id="userdb-card" style="display:none">
+    <h2>Абоненты HSS (user_db.csv)</h2>
+    <p class="muted">Редактирование списка SIM-карт ядра. После изменения требуется перезапуск ядра.</p>
+
+    <div id="userdb-restart-warn" class="restart-warn" style="display:none">
+      ⚠️ БД абонентов изменена. Для применения <b>требуется перезапуск ядра</b>.
+      <button class="btn" id="userdb-restart-btn">↻ Перезапустить ядро</button>
+    </div>
+
+    <button class="btn" id="userdb-add-btn" style="margin-bottom:10px">＋ Добавить абонента</button>
+
+    <table class="data">
+      <thead>
+        <tr>
+          <th>Имя</th>
+          <th>IMSI</th>
+          <th>Алгоритм</th>
+          <th>IP</th>
+          <th>Статус</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody id="userdb-body">
+        <tr><td colspan="6" class="empty">Загрузка…</td></tr>
+      </tbody>
+    </table>
+    <div id="userdb-msg" class="control-msg"></div>
+  </section>
+
+  <!-- Модальное окно формы абонента -->
+  <div class="modal-backdrop" id="userdb-modal" style="display:none">
+    <div class="modal">
+      <h3 id="userdb-modal-title">Абонент</h3>
+      <div class="modal-fields" id="userdb-fields"></div>
+      <div id="userdb-form-msg" class="control-msg"></div>
+      <div class="modal-actions">
+        <button class="btn" id="userdb-modal-cancel">Отмена</button>
+        <button class="btn primary" id="userdb-modal-save">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
   <!-- События -->
   <section class="card">
     <h2>События</h2>

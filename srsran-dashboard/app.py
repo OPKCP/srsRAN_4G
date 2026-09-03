@@ -22,6 +22,7 @@ from flask import Flask, Response, jsonify, render_template, request
 
 import config
 import control
+import userdb
 from parser import EpcParser, EnbParser
 from state import Store
 
@@ -30,6 +31,10 @@ app.config.from_object(config.Config)
 
 store = Store(mode=config.Config.MODE, tail_lines=config.Config.TAIL_LINES)
 parser_lock = threading.Lock()
+
+# Флаг: user_db.csv был изменён через дашборд — требуется перезапуск ядра (HSS кеширует список).
+userdb_pending_restart = {"flag": False}
+_userdb_lock = threading.Lock()
 
 
 def _make_parser():
@@ -150,6 +155,78 @@ def api_control_action(name, action):
     res = control.action(name, action)
     status_code = 200 if res.get("ok") else 400
     return jsonify(res), status_code
+
+
+# ---------------------------------------------------------------------------
+# Редактор базы абонентов HSS (user_db.csv) — только в epc-режиме
+# ---------------------------------------------------------------------------
+def _userdb_call(fn, *args, **kwargs):
+    """Выполнить операцию над user_db; при успехе устанавливает флаг restart."""
+    with _userdb_lock:
+        res = fn(*args, **kwargs)
+        if res.get("ok"):
+            userdb_pending_restart["flag"] = True
+        return res
+
+
+@app.route("/api/userdb")
+def api_userdb():
+    """Список записей + метаданные полей + статус pending-restart."""
+    if not config.Config.is_epc():
+        return jsonify({"ok": False, "error": "редактор доступен только в epc-режиме"}), 403
+    data = userdb.list_records()
+    return jsonify({**data,
+                    "fields": userdb.FIELD_META,
+                    "pending_restart": userdb_pending_restart["flag"],
+                    "restart_target": "epc"})
+
+
+@app.route("/api/userdb/fields")
+def api_userdb_fields():
+    """Метаданные полей (для построения формы)."""
+    return jsonify({"ok": True, "fields": userdb.FIELD_META, "defaults": {
+        f["key"]: f["default"] for f in userdb.FIELD_META}})
+
+
+@app.route("/api/userdb/<imsi>")
+def api_userdb_get(imsi):
+    return jsonify(userdb.get_record(imsi))
+
+
+@app.route("/api/userdb", methods=["POST"])
+def api_userdb_create():
+    """Создать новую запись."""
+    res = _userdb_call(userdb.add_record, request.get_json(silent=True) or {})
+    return jsonify(res), (200 if res.get("ok") else 400)
+
+
+@app.route("/api/userdb/<imsi>", methods=["PUT"])
+def api_userdb_update(imsi):
+    """Обновить запись по IMSI."""
+    res = _userdb_call(userdb.update_record, imsi, request.get_json(silent=True) or {})
+    return jsonify(res), (200 if res.get("ok") else 400)
+
+
+@app.route("/api/userdb/<imsi>", methods=["DELETE"])
+def api_userdb_delete(imsi):
+    """Удалить запись по IMSI."""
+    res = _userdb_call(userdb.delete_record, imsi)
+    return jsonify(res), (200 if res.get("ok") else 400)
+
+
+@app.route("/api/userdb/<imsi>/<state>", methods=["POST"])
+def api_userdb_setstate(imsi, state):
+    """Включить/выключить запись (state = enable|disable)."""
+    enabled = state == "enable"
+    res = _userdb_call(userdb.set_enabled, imsi, enabled)
+    return jsonify(res), (200 if res.get("ok") else 400)
+
+
+@app.route("/api/userdb/restart/done", methods=["POST"])
+def api_userdb_restart_done():
+    """Сбросить флаг pending-restart (после перезапуска ядра)."""
+    userdb_pending_restart["flag"] = False
+    return jsonify({"ok": True})
 
 
 # ---------------------------------------------------------------------------
