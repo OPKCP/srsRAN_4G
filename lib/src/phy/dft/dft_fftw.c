@@ -30,10 +30,41 @@
 #include "srsran/phy/dft/dft.h"
 #include "srsran/phy/utils/vector.h"
 
+#include <stdio.h>
+#include <time.h>
+
 #define dft_ceil(a, b) ((a - 1) / b + 1)
 #define dft_floor(a, b) (a / b)
 
 #define FFTW_WISDOM_FILE "%s/.srsran_fftwisdom"
+
+// --- Информативный лог формирования FFT-планов ---
+// FFTW создаёт план атомарным блокирующим вызовом (прогресс внутри одного плана
+// недоступен), поэтому прогресс показывается пошагово: каждый завершённый план ---
+// это один "шаг". Ниже -- таймер, счётчик и вспомогательные функции вывода.
+
+static uint64_t dft_plan_ms_total = 0;
+static uint32_t dft_plan_n_total  = 0;
+
+static uint64_t dft_get_ms(void)
+{
+  struct timespec ts = {0, 0};
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (uint64_t)ts.tv_sec * 1000u + (uint64_t)ts.tv_nsec / 1000000u;
+}
+
+static void dft_log_plan_result(const char* kind, int size, uint64_t ms)
+{
+  dft_plan_ms_total += ms;
+  dft_plan_n_total++;
+  printf("[FFT] plan built: %-6s size=%-5d  %llu ms  (total %u plans, %llu ms)\n",
+         kind,
+         size,
+         (unsigned long long)ms,
+         dft_plan_n_total,
+         (unsigned long long)dft_plan_ms_total);
+  fflush(stdout);
+}
 
 static int get_fftw_wisdom_file(char* full_path, uint32_t n)
 {
@@ -59,11 +90,16 @@ __attribute__((constructor)) static void srsran_dft_load()
 #ifdef FFTW_WISDOM_FILE
   char full_path[256];
   get_fftw_wisdom_file(full_path, sizeof(full_path));
+  printf("[FFT] FFT plan cache file: %s\n", full_path);
   // lockf needs a file descriptor open for writing, so this must be r+
   FILE* fd = fopen(full_path, "r+");
   if (fd == NULL) {
+    printf("[FFT] FFT plan cache file NOT found -> plans will be computed (may take a few minutes)\n");
+    fflush(stdout);
     return;
   }
+  printf("[FFT] FFT plan cache file found -> reusing saved plans (fast start)\n");
+  fflush(stdout);
   if (lockf(fileno(fd), F_LOCK, 0) == -1) {
     perror("lockf()");
     fclose(fd);
@@ -87,22 +123,29 @@ __attribute__((destructor)) void srsran_dft_exit()
 #ifdef FFTW_WISDOM_FILE
   char full_path[256];
   get_fftw_wisdom_file(full_path, sizeof(full_path));
+  if (dft_plan_n_total > 0) {
+    printf("[FFT] completed computing %u plan(s), total %llu ms\n",
+           dft_plan_n_total,
+           (unsigned long long)dft_plan_ms_total);
+  }
   FILE* fd = fopen(full_path, "w");
-  if (fd == NULL) {
-    return;
+  if (fd != NULL) {
+    if (lockf(fileno(fd), F_LOCK, 0) == -1) {
+      perror("lockf()");
+      fclose(fd);
+    } else {
+      fftwf_export_wisdom_to_file(fd);
+      if (lockf(fileno(fd), F_ULOCK, 0) == -1) {
+        perror("u-lockf()");
+      }
+      printf("[FFT] FFT plan cache saved to: %s\n", full_path);
+      fflush(stdout);
+      fclose(fd);
+    }
+  } else {
+    printf("[FFT] WARNING: could not write FFT plan cache to: %s\n", full_path);
+    fflush(stdout);
   }
-  if (lockf(fileno(fd), F_LOCK, 0) == -1) {
-    perror("lockf()");
-    fclose(fd);
-    return;
-  }
-  fftwf_export_wisdom_to_file(fd);
-  if (lockf(fileno(fd), F_ULOCK, 0) == -1) {
-    perror("u-lockf()");
-    fclose(fd);
-    return;
-  }
-  fclose(fd);
 #endif
   fftwf_cleanup();
 }
@@ -161,7 +204,9 @@ int srsran_dft_replan_guru_c(srsran_dft_plan_t* plan,
   /* Destroy current plan */
   fftwf_destroy_plan(plan->p);
 
+  uint64_t t0 = dft_get_ms();
   plan->p = fftwf_plan_guru_dft(1, &iodim, 1, &howmany_dims, in_buffer, out_buffer, sign, FFTW_TYPE);
+  dft_log_plan_result("guru_c", new_dft_points, dft_get_ms() - t0);
 
   pthread_mutex_unlock(&fft_mutex);
 
@@ -188,7 +233,9 @@ int srsran_dft_replan_c(srsran_dft_plan_t* plan, const int new_dft_points)
     fftwf_destroy_plan(plan->p);
     plan->p = NULL;
   }
+  uint64_t t0 = dft_get_ms();
   plan->p = fftwf_plan_dft_1d(new_dft_points, plan->in, plan->out, sign, FFTW_TYPE);
+  dft_log_plan_result("replan_c", new_dft_points, dft_get_ms() - t0);
   pthread_mutex_unlock(&fft_mutex);
 
   if (!plan->p) {
@@ -216,7 +263,9 @@ int srsran_dft_plan_guru_c(srsran_dft_plan_t* plan,
 
   pthread_mutex_lock(&fft_mutex);
 
+  uint64_t t0 = dft_get_ms();
   plan->p = fftwf_plan_guru_dft(1, &iodim, 1, &howmany_dims, in_buffer, out_buffer, sign, FFTW_TYPE);
+  dft_log_plan_result("guru_c", dft_points, dft_get_ms() - t0);
   pthread_mutex_unlock(&fft_mutex);
 
   if (!plan->p) {
@@ -243,8 +292,10 @@ int srsran_dft_plan_c(srsran_dft_plan_t* plan, const int dft_points, srsran_dft_
 
   pthread_mutex_lock(&fft_mutex);
 
+  uint64_t t0 = dft_get_ms();
   int sign = (dir == SRSRAN_DFT_FORWARD) ? FFTW_FORWARD : FFTW_BACKWARD;
   plan->p  = fftwf_plan_dft_1d(dft_points, plan->in, plan->out, sign, FFTW_TYPE);
+  dft_log_plan_result("dft_1d_c", dft_points, dft_get_ms() - t0);
 
   pthread_mutex_unlock(&fft_mutex);
 
@@ -274,7 +325,9 @@ int srsran_dft_replan_r(srsran_dft_plan_t* plan, const int new_dft_points)
     fftwf_destroy_plan(plan->p);
     plan->p = NULL;
   }
+  uint64_t t0 = dft_get_ms();
   plan->p = fftwf_plan_r2r_1d(new_dft_points, plan->in, plan->out, sign, FFTW_TYPE);
+  dft_log_plan_result("replan_r", new_dft_points, dft_get_ms() - t0);
   pthread_mutex_unlock(&fft_mutex);
 
   if (!plan->p) {
@@ -290,7 +343,9 @@ int srsran_dft_plan_r(srsran_dft_plan_t* plan, const int dft_points, srsran_dft_
   int sign = (dir == SRSRAN_DFT_FORWARD) ? FFTW_R2HC : FFTW_HC2R;
 
   pthread_mutex_lock(&fft_mutex);
+  uint64_t t0 = dft_get_ms();
   plan->p = fftwf_plan_r2r_1d(dft_points, plan->in, plan->out, sign, FFTW_TYPE);
+  dft_log_plan_result("dft_1d_r", dft_points, dft_get_ms() - t0);
   pthread_mutex_unlock(&fft_mutex);
 
   if (!plan->p) {
