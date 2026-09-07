@@ -107,6 +107,10 @@ DASH_MODE=enb DASH_LOG_HOST=./logs_enb docker compose up -d --build
 - **EPC-парсер** ловит: `S1 Setup Request` (БС), `Attach request -- IMSI` (подключение),
   `IMSI: ..., UE IP: ...` (успешный attach → запись IP), `Detach` / `UE Context Release`,
   `User not found` (ошибка аутентификации).
+- **Поддержка Open5GS:** начиная с ветки `feat/handover-open5gs-migration` EPC-парсер умеет
+  распознавать и формат лога **Open5GS** MME (`10/02 10:09:54.844: [mme] INFO: ...`):
+  attach/service request/detach по IMSI, ошибки аутентификации, выдачу UE IP. Формат srsepc
+  полностью сохранён. Точные паттерны привязки IP могут уточняться по реальным логам Open5GS.
 - **eNB-парсер** ловит старт eNB, открытие RF, S1-соединение; метрики активных UE берёт
   из `enb_report.json` (JSON, формируемый `srsenb` через `metrics_json`).
 - **Состояние** (абоненты, БС, события) хранится потокобезопасно и отдаётся через

@@ -25,6 +25,39 @@ RE_LINE = re.compile(
     r"^(?P<ts>\d{4}-\d{2}-\d{2}T[\d:.]+)\s+\[(?P<mod>[A-Z0-9]+)\s*\]\s+\[(?P<lvl>[IDWE])\]\s+(?P<msg>.*)$"
 )
 
+# Формат лога Open5GS MME (пример):
+#   10/02 10:09:54.844: [mme] INFO: s1ap_server() [127.0.0.2]:36412
+#   10/02 10:10:01.123: [mme] INFO: [250010000000001] Attach request
+#   Также возможен префикс "MME INFO:" без квадратных скобок у модуля.
+RE_LINE_OPEN5GS = re.compile(
+    r"^(?P<ts>\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d+):\s*"
+    r"\[?(?P<mod>mme|sgwc|sgwu|pgwc|pgwu|hss|pcrf|amf|upf)\]?\s*"
+    r"(?P<lvl>INFO|DEBUG|WARN|ERROR)?\s*:?\s*(?P<msg>.*)$",
+    re.IGNORECASE,
+)
+
+# Open5GS MME: "[IMSI] Attach request" / "[IMSI] Service request" / "[IMSI] Detach request"
+RE_OGS_IMSI_ACTION = re.compile(r"\[(?P<imsi>\d{15})\]\s+(?P<action>Attach request|Service request|Detach request|TAU request)", re.IGNORECASE)
+# Open5GS MME: {"IMSI = <imsi>"}
+RE_OGS_IMSI_EQ = re.compile(r"\bIMSI\s*=\s*(\d{15})", re.IGNORECASE)
+
+# S1 Setup (Open5GS)   -- при debug-уровне; также "eNB[N2/S1] connection"
+RE_OGS_S1_SETUP = re.compile(
+    r"(S1\s*[-_]?Setup\s*(Request|Response)?|S1Setup|eNB.*connection|Initiate S1 Setup|Accepted S1)",
+    re.IGNORECASE,
+)
+
+# Выданный UE IP (Open5GS): "UE IPv4 = 10.0.0.14", "PAA = 10.0.0.14", "IP[10.0.0.14]"
+RE_OGS_UE_IP = re.compile(r"(?:UE\s*IPv4\s*=\s*|PAA\s*=\s*|UE IP\s*:\s*|IP\[)([\d.]+)", re.IGNORECASE)
+
+# Ошибки Open5GS: нет абонента в БД / сбой создания сессии / сбой аутентификации
+RE_OGS_NO_SUBSCRIBER = re.compile(r"(No subscriber|Unknown subscriber|not found in MongoDB|not found.*subscriber)", re.IGNORECASE)
+RE_OGS_AUTH_FAIL = re.compile(r"(Authentication failure|Sync failure|Authen.*fail|MAC.*fail|CreateSessionResponse failure)", re.IGNORECASE)
+
+# Отсоединение/освобождение контекста (Open5GS)
+RE_OGS_DETACH = re.compile(r"(Detach request|UE Context Release|Remove.*context|Send UE context release)", re.IGNORECASE)
+
+
 # S1 Setup Request (подключилась базовая станция)
 RE_S1_SETUP = re.compile(r"Received S1 Setup Request", re.IGNORECASE)
 RE_S1_SETUP_DETAIL = re.compile(
@@ -87,16 +120,30 @@ class EpcParser:
         return {}
 
     def handle_line(self, line):
-        """Разобрать одну строку лога EPC. Возвращает True, если событие обработано."""
+        """Разобрать одну строку лога EPC (srsepc или Open5GS). Возвращает True, если событие обработано."""
         # сохраняем строку для просмотра
         if line.strip():
             self._log(line)
 
-        m = RE_LINE.match(line)
-        if not m:
-            return False
-        msg = m.group("msg")
-        lvl = m.group("lvl")
+        # --- Определяем формат строки: srsepc или Open5GS ---
+        m = RE_LINE.match(line)          # srsepc: [EPC] [I] ...
+        is_open5gs = False
+        if m:
+            msg = m.group("msg")
+            lvl = m.group("lvl")
+        else:
+            m = RE_LINE_OPEN5GS.match(line)  # Open5GS: [mme] INFO: ...
+            if m:
+                is_open5gs = True
+                msg = m.group("msg")
+                lvl = m.group("lvl")
+            else:
+                # Нестандартная строка, не пытаемся парсить детально
+                return False
+
+        # --- Open5GS-специфичная обработка (до srsepc, чтобы не пересекаться) ---
+        if is_open5gs:
+            return self._handle_open5gs(msg, lvl)
 
         # --- Подключение базовой станции ---
         if RE_S1_SETUP.search(msg):
@@ -181,6 +228,92 @@ class EpcParser:
             return True
         if RE_DELETE_SESSION.search(msg):
             self.store.add_event("info", "epc", "detach", "Сессия абонента удалена")
+            return True
+
+        return False
+
+    def _handle_open5gs(self, msg, lvl):
+        """Обработка строки лога Open5GS MME/SGW/PGW. Возвращает True, если событие распознано."""
+        # --- Подключение базовой станции (S1 Setup) ---
+        if RE_OGS_S1_SETUP.search(msg):
+            self.store.register_basestation("default", name="eNB (S1)")
+            self.store.add_event("success", "epc", "bs",
+                                 "Базовая станция подключилась (S1 Setup)")
+            return True
+
+        # --- Attach / Service / Detach / TAU по IMSI: "[<IMSI>] Attach request" ---
+        act_m = RE_OGS_IMSI_ACTION.search(msg)
+        if act_m:
+            imsi = act_m.group("imsi")
+            action = act_m.group("action").lower()
+            self.store.register_subscriber(imsi)
+            if "detach" in action:
+                self.store.mark_detached(imsi, reason="detach")
+                self.store.add_event("info", "epc", "detach",
+                                     f"Отключение абонента IMSI {imsi}")
+            elif "service" in action:
+                self.store.mark_connecting(imsi)
+                self.store.add_event("info", "epc", "attach",
+                                     f"Service request от IMSI {imsi}")
+            else:
+                self.store.mark_connecting(imsi)
+                self.store.add_event("info", "epc", "attach",
+                                     f"Запрос подключения (attach) от IMSI {imsi}")
+            return True
+
+        # Если модуль — MME и в строке есть IMSI (например "IMSI = 2500..." без действия),
+        # при информационном уровне считаем активностью абонента.
+        imsi_eq_m = RE_OGS_IMSI_EQ.search(msg)
+        if imsi_eq_m:
+            imsi = imsi_eq_m.group(1)
+            lvl_norm = (lvl or "").upper()
+            # lvl может быть буквой ("I") или словом ("INFO")
+            if lvl_norm.startswith(("I", "W", "E")):
+                self.store.register_subscriber(imsi)
+                self.store.mark_connecting(imsi)
+                self.store.add_event("info", "epc", "attach",
+                                     f"Активность абонента IMSI {imsi}")
+            return True
+
+        # --- Выдача UE IP (Open5GS) — привязываем к последнему активному абоненту ---
+        ip_m = RE_OGS_UE_IP.search(msg)
+        if ip_m:
+            ip = ip_m.group(1)
+            # ищем последнего абонента в состоянии connecting/attached
+            last_imsi = None
+            for s in self.store.get_subscribers():
+                if s["state"] in ("connecting", "attached"):
+                    last_imsi = s["imsi"]
+            if last_imsi:
+                self.store.mark_attach(last_imsi, ip=ip)
+                self.store.add_event("success", "epc", "attach",
+                                     f"Абонент подключён: IMSI {last_imsi}, IP {ip}")
+            else:
+                self.store.add_event("info", "epc", "attach",
+                                     f"Выдан UE IP {ip}")
+            return True
+
+        # --- Ошибки: нет абонента в БД Open5GS ---
+        if RE_OGS_NO_SUBSCRIBER.search(msg):
+            imsi_m = RE_OGS_IMSI_EQ.search(msg)
+            imsi = imsi_m.group(1) if imsi_m else "?"
+            self.store.register_subscriber(imsi if imsi != "?" else "unknown")
+            if imsi != "?":
+                self.store.mark_detached(imsi, reason="абонент не найден в БД Open5GS")
+            self.store.add_event("error", "epc", "attach",
+                                 "Аутентификация не удалась: абонент не найден в БД Open5GS")
+            return True
+
+        # --- Ошибки аутентификации / сбой создания сессии ---
+        if RE_OGS_AUTH_FAIL.search(msg):
+            self.store.add_event("warn", "epc", "attach",
+                                 "Ошибка аутентификации / создания сессии (Open5GS)")
+            return True
+
+        # --- Detach / освобождение контекста ---
+        if RE_OGS_DETACH.search(msg):
+            self.store.add_event("info", "epc", "detach",
+                                 "Абонент отключился / контекст освобождён (Open5GS)")
             return True
 
         return False
