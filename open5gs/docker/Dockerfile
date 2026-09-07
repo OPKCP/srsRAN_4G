@@ -16,7 +16,7 @@ ARG OPEN5GS_VERSION
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     ca-certificates git meson ninja-build gcc g++ pkg-config flex bison \
-    curl python3-pip python3-setuptools \
+    curl python3-pip python3-setuptools cmake \
     libsctp-dev libgnutls28-dev libgcrypt-dev libssl-dev libidn11-dev \
     libmongoc-dev libbson-dev libyaml-dev libmicrohttpd-dev \
     libcurl4-gnutls-dev libnghttp2-dev libtins-dev libtalloc-dev \
