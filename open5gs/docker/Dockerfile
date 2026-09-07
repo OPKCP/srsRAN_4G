@@ -28,9 +28,6 @@ RUN git clone --recursive --depth 1 --branch ${OPEN5GS_VERSION} \
 
 WORKDIR /src/open5gs
 RUN meson setup build --prefix=/usr \
-        -Dmongoc=true \
-        -Dmicrohttpd=true \
-        -Dmem_domain=false \
     && ninja -C build \
     && ninja -C build install
 
