@@ -1,0 +1,73 @@
+# docker-compose для Open5GS (4G EPC) — развёртывание на pi5-2.
+#
+# Состав 4G/5G NSA Core (Open5GS):
+#   - mme, hss, pcrf, sgwc, sgwu, smf(pgwc), upf(pgwu)
+#   - mongodb (БД субскрипций), webui (управление абонентами)
+#
+# Подход: один контейнер open5gs со всеми NF + отдельный mongodb + webui.
+# Альтернатива (тоже официальная): docker_open5gs (all-in-one образ + mongodb).
+#
+# Для подключения ВНЕШНИХ eNB к ядру на pi5-2 используются следующие порты:
+#   - 36412/sctp : S1-MME (MME)
+#   - 2152/udp   : GTP-U (SGWU)
+#   - 38412/sctp : NGAP (AMF) — только для 5G, для 4G не нужен
+#
+# ВАЖНО: перед запуском сверить mcc/mnc/tac/адреса в open5gs/config/*.yaml
+#        с фактической конфигурацией БС (enb.conf на Base5 и pi5-2).
+
+version: "3.8"
+
+services:
+  mongodb:
+    image: mongo:6
+    container_name: open5gs-mongodb
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      open5gs_net:
+        ipv4_address: 192.168.1.26   # или отдельная подсеть; уточнить при развёртывании
+        # примечание: если использовать network host, менять не нужно.
+
+  open5gs:
+    image: open5gs/open5gs:latest
+    container_name: open5gs
+    restart: unless-stopped
+    depends_on:
+      - mongodb
+    volumes:
+      - ./config:/etc/open5gs:ro   # mme.yaml, sgwc.yaml, sgwu.yaml, smf.yaml, upf.yaml, hss.yaml, pcrf.yaml
+    command: open5gs-mmed # пример; при CUPS запускать все демоны отдельно
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    ports:
+      - "36412:36412/sctp"   # S1-MME
+      - "2152:2152/udp"      # GTP-U
+      - "2123:2123/udp"      # S11/S5 (gtpc)
+      - "8805:8805/udp"      # PFCP
+      - "3868:3868/sctp"     # S6a (Diameter, HSS/MME) — при необходимости
+    networks:
+      open5gs_net: {}
+
+  webui:
+    image: open5gs/webui:latest
+    container_name: open5gs-webui
+    restart: unless-stopped
+    depends_on:
+      - mongodb
+    ports:
+      - "3000:3000"
+    networks:
+      open5gs_net: {}
+
+volumes:
+  mongo_data:
+
+networks:
+  open5gs_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.10.0/24

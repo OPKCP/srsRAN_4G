@@ -1,0 +1,49 @@
+# Open5GS — 4G EPC конфигурация MME (шаблон)
+# Целевой стенд: ядро на pi5-2 (192.168.1.26).
+#
+# ВАЖНО: значения PLMN (mcc/mnc), TAC, адресов уточняются при развёртывании.
+#   - В `srsran_configs/epc.conf`: mcc=250, mnc=01, tac=0x0007, apn=internet.mts.ru
+#   - В `srsran_configs/prod/readme.md`: mcc=250, mnc=63, apn=IS2026.net
+# Фактическая рабочая конфигурация — на малинках; сверять перед запуском.
+#
+# Источник: https://github.com/open5gs/open5gs/blob/main/configs/open5gs/mme.yaml.in
+
+logger:
+    file:
+        path: /var/log/open5gs/mme.log
+    level: info
+
+parameter:
+    no_ipv6: true
+
+# Используйте "srsenb.yaml" пример из Open5GS для совместимости с srsENB
+# (включён в состав примеров Open5GS). Здесь приведён минимальный 4G-набор.
+mme:
+    freeDiameter: /etc/freeDiameter/mme.conf
+    s1ap:
+        server:
+            - address: 192.168.1.26        # Bind S1-MME (SCTP 36412) — IP pi5-2
+    gtpc:
+        server:
+            - address: 192.168.1.26
+        client:
+            sgwc:
+                - address: 192.168.1.26    # SGWC (S11)
+                - address: 127.0.0.3
+    gummei:
+        plmn_id:
+            mcc: 250                       # Уточнить: 250
+            mnc: 01                        # Уточнить: 01 (или 63)
+        mme_gid: 2
+        mme_code: 1
+    tai:
+        plmn_id:
+            mcc: 250
+            mnc: 01
+        tac: 1                             # Уточнить: TAC 0x0007
+    security:
+        integrity_order: [ EIA2, EIA1, EIA0 ]
+        ciphering_order: [ EEA0, EEA1, EEA2 ]
+    network_name:
+        full: TR2026
+        short: TR2026

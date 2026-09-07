@@ -1,0 +1,23 @@
+# Open5GS — SGW-U (Serving Gateway User Plane) конфигурация (шаблон)
+# Целевой стенд: ядро на pi5-2 (192.168.1.26).
+#
+# GTP-U (S1-U) слушается на UDP 2152. Для подключения внешних eNB (Base5 и pi5-2)
+# адрес GTP-U должен быть доступен с обеих БС.
+#
+# Источник: https://github.com/open5gs/open5gs/blob/main/configs/open5gs/sgwu.yaml.in
+
+logger:
+    file:
+        path: /var/log/open5gs/sgwu.log
+    level: info
+
+parameter:
+    no_ipv6: true
+
+sgwu:
+    gtpu:
+        server:
+            - address: 192.168.1.26        # Bind GTP-U (UDP 2152) — IP pi5-2
+    pfcp:
+        server:
+            - address: 192.168.1.26        # Sxa (PFCP) к SGWC
