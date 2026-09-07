@@ -1,0 +1,43 @@
+logger:
+  file:
+    path: /var/log/open5gs/smf.log
+  level: info
+
+global:
+  max:
+    ue: 1024
+
+smf:
+  sbi:
+    server:
+      - address: 192.168.1.26
+        port: 7777
+  pfcp:
+    server:
+      - address: 192.168.1.26
+    client:
+      upf:
+        - address: 192.168.1.26
+  gtpc:
+    server:
+      - address: 192.168.1.26
+  gtpu:
+    server:
+      - address: 192.168.1.26
+  metrics:
+    server:
+      - address: 192.168.1.26
+        port: 9090
+  # UE IP-пул задаётся в UPF (session). Для PGW-C/SMF указываем APN-сеть для справки.
+  session:
+    - subnet: 10.0.0.0/24
+      gateway: 10.0.0.1
+  dns:
+    - 8.8.8.8
+  mtu: 1400
+  freeDiameter: /etc/freeDiameter/smf.conf
+  info:
+    - s_nssai:
+        - sst: 1
+          dnn:
+            - IS2026.net

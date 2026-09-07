@@ -1,0 +1,23 @@
+logger:
+  file:
+    path: /var/log/open5gs/upf.log
+  level: info
+
+global:
+  max:
+    ue: 1024
+
+upf:
+  pfcp:
+    server:
+      - address: 192.168.1.26
+  gtpu:
+    server:
+      - address: 192.168.1.26          # GTP-U (S1-U / N3) bind — pi5-2
+  session:
+    - subnet: 10.0.0.0/24              # UE IP-пул (как в srsEPC)
+      gateway: 10.0.0.1                # SGi шлюз (ogstun)
+  metrics:
+    server:
+      - address: 192.168.1.26
+        port: 9090

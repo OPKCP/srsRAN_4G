@@ -1,0 +1,14 @@
+logger:
+  file:
+    path: /var/log/open5gs/pcrf.log
+  level: info
+
+global:
+  max:
+    ue: 1024
+
+pcrf:
+  gtpc:
+    server:
+      - address: 192.168.1.26
+  freeDiameter: /etc/freeDiameter/pcrf.conf

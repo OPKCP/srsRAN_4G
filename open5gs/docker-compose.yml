@@ -1,21 +1,14 @@
 # docker-compose для Open5GS (4G EPC) — развёртывание на pi5-2.
 #
-# Состав 4G/5G NSA Core (Open5GS):
-#   - mme, hss, pcrf, sgwc, sgwu, smf(pgwc), upf(pgwu)
-#   - mongodb (БД субскрипций), webui (управление абонентами)
+# Состав 4G EPC (Open5GS CUPS): mme, hss, pcrf, sgwc, sgwu, smf(pgwc), upf(pgwu).
+# MongoDB — отдельным контейнером.
 #
-# Подход: один контейнер open5gs со всеми NF + отдельный mongodb + webui.
-# Альтернатива (тоже официальная): docker_open5gs (all-in-one образ + mongodb).
+# Ядро работает в network host (как прежний srsepc), чтобы слушать S1-MME (SCTP 36412)
+# и GTP-U (UDP 2152) на физическом IP 192.168.1.26 (pi5-2), к которому подключаются
+# обе БС (Base5=192.168.1.25, pi5-2=enb2=192.168.1.20).
 #
-# Для подключения ВНЕШНИХ eNB к ядру на pi5-2 используются следующие порты:
-#   - 36412/sctp : S1-MME (MME)
-#   - 2152/udp   : GTP-U (SGWU)
-#   - 38412/sctp : NGAP (AMF) — только для 5G, для 4G не нужен
-#
-# ВАЖНО: перед запуском сверить mcc/mnc/tac/адреса в open5gs/config/*.yaml
+# ВАЖНО: перед запуском сверить mcc/mnc/tac/адреса в ./config/*.yaml
 #        с фактической конфигурацией БС (enb.conf на Base5 и pi5-2).
-
-version: "3.8"
 
 services:
   mongodb:
@@ -26,48 +19,36 @@ services:
       - mongo_data:/data/db
     networks:
       open5gs_net:
-        ipv4_address: 192.168.1.26   # или отдельная подсеть; уточнить при развёртывании
-        # примечание: если использовать network host, менять не нужно.
+        ipv4_address: 172.30.1.2
+    ports:
+      - "127.0.0.1:27017:27017"
 
+  # Ядро Open5GS (все NF) в network host. Конфиги монтируются из ./config.
   open5gs:
-    image: open5gs/open5gs:latest
+    image: open5gs-arm64:v2.7.2
     container_name: open5gs
     restart: unless-stopped
     depends_on:
       - mongodb
-    volumes:
-      - ./config:/etc/open5gs:ro   # mme.yaml, sgwc.yaml, sgwu.yaml, smf.yaml, upf.yaml, hss.yaml, pcrf.yaml
-    command: open5gs-mmed # пример; при CUPS запускать все демоны отдельно
+    network_mode: host
     cap_add:
       - NET_ADMIN
     devices:
       - /dev/net/tun
-    ports:
-      - "36412:36412/sctp"   # S1-MME
-      - "2152:2152/udp"      # GTP-U
-      - "2123:2123/udp"      # S11/S5 (gtpc)
-      - "8805:8805/udp"      # PFCP
-      - "3868:3868/sctp"     # S6a (Diameter, HSS/MME) — при необходимости
-    networks:
-      open5gs_net: {}
-
-  webui:
-    image: open5gs/webui:latest
-    container_name: open5gs-webui
-    restart: unless-stopped
-    depends_on:
-      - mongodb
-    ports:
-      - "3000:3000"
-    networks:
-      open5gs_net: {}
-
-volumes:
-  mongo_data:
+    volumes:
+      - ./config:/etc/open5gs:ro
+      - ./logs:/var/log/open5gs
+      # freeDiameter конфиги, если собирались (для S6a между MME/HSS):
+      # - ./config/freeDiameter:/etc/freeDiameter:ro
+    # Команда по умолчанию — open5gs-mmed (запуск всех NF — см. run_open5gs.sh)
+    command: ["/bin/bash", "-c", "tail -f /dev/null"]
 
 networks:
   open5gs_net:
     driver: bridge
     ipam:
       config:
-        - subnet: 192.168.10.0/24
+        - subnet: 172.30.1.0/24
+
+volumes:
+  mongo_data:

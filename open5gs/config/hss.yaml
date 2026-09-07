@@ -1,0 +1,13 @@
+logger:
+  file:
+    path: /var/log/open5gs/hss.log
+  level: info
+
+global:
+  max:
+    ue: 1024
+
+hss:
+  freeDiameter: /etc/freeDiameter/hss.conf
+
+db_uri: mongodb://mongodb/open5gs

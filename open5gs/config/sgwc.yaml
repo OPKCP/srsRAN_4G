@@ -1,0 +1,28 @@
+logger:
+  file:
+    path: /var/log/open5gs/sgwc.log
+  level: info
+
+global:
+  max:
+    ue: 1024
+
+sgwc:
+  gtpc:
+    server:
+      - address: 192.168.1.26          # S11 (bound at open5gs-sgwcd)
+    client:
+      mme:
+        - address: 192.168.1.26
+      smf:
+        - address: 192.168.1.26        # S5c
+  pfcp:
+    server:
+      - address: 192.168.1.26          # Sxa (bound at open5gs-sgwcd)
+    client:
+      sgwu:
+        - address: 192.168.1.26        # Sxa to SGW-U
+  metrics:
+    server:
+      - address: 192.168.1.26
+        port: 9090

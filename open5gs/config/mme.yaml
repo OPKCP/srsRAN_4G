@@ -9,41 +9,46 @@
 # Источник: https://github.com/open5gs/open5gs/blob/main/configs/open5gs/mme.yaml.in
 
 logger:
-    file:
-        path: /var/log/open5gs/mme.log
-    level: info
+  file:
+    path: /var/log/open5gs/mme.log
+  level: info
 
-parameter:
-    no_ipv6: true
+global:
+  max:
+    ue: 1024
 
-# Используйте "srsenb.yaml" пример из Open5GS для совместимости с srsENB
-# (включён в состав примеров Open5GS). Здесь приведён минимальный 4G-набор.
 mme:
-    freeDiameter: /etc/freeDiameter/mme.conf
-    s1ap:
-        server:
-            - address: 192.168.1.26        # Bind S1-MME (SCTP 36412) — IP pi5-2
-    gtpc:
-        server:
-            - address: 192.168.1.26
-        client:
-            sgwc:
-                - address: 192.168.1.26    # SGWC (S11)
-                - address: 127.0.0.3
-    gummei:
-        plmn_id:
-            mcc: 250                       # Уточнить: 250
-            mnc: 01                        # Уточнить: 01 (или 63)
-        mme_gid: 2
-        mme_code: 1
-    tai:
-        plmn_id:
-            mcc: 250
-            mnc: 01
-        tac: 1                             # Уточнить: TAC 0x0007
-    security:
-        integrity_order: [ EIA2, EIA1, EIA0 ]
-        ciphering_order: [ EEA0, EEA1, EEA2 ]
-    network_name:
-        full: TR2026
-        short: TR2026
+  freeDiameter: /etc/freeDiameter/mme.conf
+  s1ap:
+    server:
+      - address: 192.168.1.26          # S1-MME bind (SCTP 36412) — pi5-2
+  gtpc:
+    server:
+      - address: 192.168.1.26
+    client:
+      sgwc:
+        - address: 192.168.1.26        # SGWC (S11), тот же хост
+      smf:
+        - address: 192.168.1.26        # SMF/PGW-C (S5c)
+  metrics:
+    server:
+      - address: 192.168.1.26
+        port: 9090
+  gummei:
+    - plmn_id:
+        mcc: 250
+        mnc: 63
+      mme_gid: 2
+      mme_code: 1
+  tai:
+    - plmn_id:
+        mcc: 250
+        mnc: 63
+      tac: 7                              # TAC 0x0007
+  security:
+    integrity_order: [ EIA2, EIA1, EIA0 ]
+    ciphering_order: [ EEA0, EEA1, EEA2 ]
+  network_name:
+    full: IS2026
+    short: IS2026
+  mme_name: open5gs-mme0
