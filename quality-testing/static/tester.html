@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Тестер канала srsRAN</title>
+<link rel="stylesheet" href="/static/tester.css">
+</head>
+<body>
+<div class="wrap">
+  <h1>📶 Тестер канала LTE</h1>
+  <p class="clientip">Клиент: <b id="client-ip">…</b> · сессия: <b id="session-timer">0:00</b></p>
+
+  <section class="card">
+    <div class="grid">
+      <div class="m"><span class="lbl">Базовая станция</span><span id="enb-name" class="val">—</span></div>
+      <div class="m"><span class="lbl">WS (сервер)</span><span id="ws-state" class="val">…</span></div>
+      <div class="m"><span class="lbl">Пинг (мгнов.)</span><span id="ping-now" class="val">—</span></div>
+      <div class="m"><span class="lbl">Пинг (средн.)</span><span id="ping-avg" class="val">—</span></div>
+      <div class="m"><span class="lbl">Потери (100 последних)</span><span id="ping-loss" class="val">0</span></div>
+      <div class="m"><span class="lbl">Скорость</span><span id="speed" class="val">—</span></div>
+    </div>
+    <div class="spark" id="spark"></div>
+  </section>
+
+  <section class="card">
+    <h2>Тест скорости</h2>
+    <div class="btns">
+      <button id="speed-start" class="btn btn-green">▶ Запустить</button>
+      <button id="speed-stop" class="btn btn-red" disabled>■ Остановить</button>
+    </div>
+    <div class="statusline">Статус: <span id="speed-state">idle</span></div>
+    <p class="hint">Обновите страницу или нажмите F5, чтобы подтянуть свежий код.</p>
+  </section>
+</div>
+
+<!-- Внедряем IP клиента, который сервер видит при загрузке страницы.
+     Используется для идентификации в heartbeat/командах. -->
+<script>
+  window.__CLIENT_IP__ = "{{CLIENT_IP}}";
+</script>
+<script src="/static/tester.js"></script>
+</body>
+</html>
