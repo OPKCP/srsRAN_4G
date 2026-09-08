@@ -36,17 +36,21 @@ FROM debian:bookworm-slim AS runtime
 ARG OPEN5GS_VERSION
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    libsctp1 libgnutls30 libgcrypt20 libssl3 \
+    libsctp1 libgnutls30 libgcrypt20 libssl3 libidn12 \
     libmongoc-1.0-0 libbson-1.0-0 libyaml-0-2 libmicrohttpd12 \
-    libcurl4 libnghttp2-14 libtalloc2 \
+    libcurl3-gnutls libnghttp2-14 libtalloc2 libtins4.0 \
     iproute2 iptables curl \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /etc/open5gs /root/.cache/open5gs
 
-# Копируем установленные бинарники и библиотеки Open5GS из builder
+# Копируем установленные бинарники Open5GS
 COPY --from=builder /usr/bin/open5gs-* /usr/bin/
-COPY --from=builder /usr/lib/aarch64-linux-gnu/libogs* /usr/lib/aarch64-linux-gnu/
-COPY --from=builder /usr/lib/aarch64-linux-gnu/libogscrypt* /usr/lib/aarch64-linux-gnu/
+# Библиотеки Open5GS (meson --prefix=/usr ставит их в /usr/lib, а не в multiarch dir)
+COPY --from=builder /usr/lib/libogs*.so* /usr/lib/
+# Библиотеки freeDiameter (submodule) — нужны для S6a
+COPY --from=builder /usr/lib/libfd*.so* /usr/lib/
+# prometheus-client-c (metrics) — ставится в multiarch dir
+COPY --from=builder /usr/lib/aarch64-linux-gnu/libprom*.so* /usr/lib/aarch64-linux-gnu/
 RUN ldconfig || true
 
 # Конфиги по умолчанию монтируются как volume (--config).
