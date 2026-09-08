@@ -9,5 +9,9 @@ global:
 
 hss:
   freeDiameter: /etc/freeDiameter/hss.conf
+  sbi:
+    server:
+      - address: 127.0.0.8
+        port: 7777
 
-db_uri: mongodb://mongodb/open5gs
+db_uri: mongodb://127.0.0.1:27017/open5gs

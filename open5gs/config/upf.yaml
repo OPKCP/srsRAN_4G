@@ -10,14 +10,15 @@ global:
 upf:
   pfcp:
     server:
-      - address: 192.168.1.26
+      - address: 127.0.0.7             # N4/Sxb (bound) на своём loopback — не конфликтует с SGWU на 8805
   gtpu:
     server:
-      - address: 192.168.1.26          # GTP-U (S1-U / N3) bind — pi5-2
+      - address: 127.0.0.7             # GTP-U (S5u) bind — внутренний loopback
   session:
     - subnet: 10.0.0.0/24              # UE IP-пул (как в srsEPC)
-      gateway: 10.0.0.1                # SGi шлюз (ogstun)
+      gateway: 10.0.0.1                # SGi шлюз
+      dev: ogstun                      # SGi интерфейс (tun), создаётся UPF
   metrics:
     server:
-      - address: 192.168.1.26
+      - address: 127.0.0.7
         port: 9090

@@ -18,7 +18,7 @@ global:
 sgwu:
   gtpu:
     server:
-      - address: 192.168.1.26          # GTP-U (S1-U) bind (UDP 2152) — pi5-2
+      - address: 192.168.1.26          # GTP-U (S1-U) bind (UDP 2152) — pi5-2 (наружу, к БС)
   pfcp:
     server:
-      - address: 192.168.1.26          # Sxa (PFCP) к SGWC
+      - address: 127.0.0.6             # Sxa (PFCP) на своём loopback — не конфликтует с UPF на 8805

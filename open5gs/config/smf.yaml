@@ -8,25 +8,31 @@ global:
     ue: 1024
 
 smf:
-  sbi:
-    server:
-      - address: 192.168.1.26
-        port: 7777
+  # 4G EPC (PGW-C): 5G SBI/NRF не используется — секция sbi намеренно отключена.
+  # Если оставить sbi.server — smfd попытается зарегистрироваться в NRF (nnrf-nfm),
+  # которого нет в чистом 4G EPC, и упадёт с 'No-CLIENT:No-SCP'.
+  #  sbi:
+  #    server:
+  #      - address: 127.0.0.4
+  #        port: 7777
   pfcp:
     server:
-      - address: 192.168.1.26
+      - address: 127.0.0.4           # Sxb/N4 (bound) на своём loopback
     client:
       upf:
-        - address: 192.168.1.26
+        - address: 127.0.0.7          # UPF (N4) на своём loopback-адресе
   gtpc:
     server:
-      - address: 192.168.1.26
+      - address: 127.0.0.4           # S5c (bound) на своём loopback — не конфликтует с MME/SGWC на 2123
+    client:
+      sgwc:
+        - address: 127.0.0.3
   gtpu:
     server:
-      - address: 192.168.1.26
+      - address: 127.0.0.4
   metrics:
     server:
-      - address: 192.168.1.26
+      - address: 127.0.0.4
         port: 9090
   # UE IP-пул задаётся в UPF (session). Для PGW-C/SMF указываем APN-сеть для справки.
   session:

@@ -10,19 +10,19 @@ global:
 sgwc:
   gtpc:
     server:
-      - address: 192.168.1.26          # S11 (bound at open5gs-sgwcd)
+      - address: 127.0.0.3             # S11 (bound на своём loopback — не конфликтует с MME/SMF на 2123)
     client:
       mme:
-        - address: 192.168.1.26
+        - address: 127.0.0.2
       smf:
-        - address: 192.168.1.26        # S5c
+        - address: 127.0.0.4           # S5c
   pfcp:
     server:
-      - address: 192.168.1.26          # Sxa (bound at open5gs-sgwcd)
+      - address: 127.0.0.3             # Sxa (bound) на своём loopback
     client:
       sgwu:
-        - address: 192.168.1.26        # Sxa to SGW-U
+        - address: 127.0.0.6           # Sxa to SGW-U
   metrics:
     server:
-      - address: 192.168.1.26
+      - address: 127.0.0.3
         port: 9090

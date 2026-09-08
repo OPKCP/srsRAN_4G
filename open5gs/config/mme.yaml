@@ -21,18 +21,18 @@ mme:
   freeDiameter: /etc/freeDiameter/mme.conf
   s1ap:
     server:
-      - address: 192.168.1.26          # S1-MME bind (SCTP 36412) — pi5-2
+      - address: 192.168.1.26          # S1-MME bind (SCTP 36412) — pi5-2 (наружу, к БС)
   gtpc:
     server:
-      - address: 192.168.1.26
+      - address: 127.0.0.2             # GTP-C S11 bind (внутр.) — разные loopback, чтобы не конфликтовать с SGWC/SMF на 2123
     client:
       sgwc:
-        - address: 192.168.1.26        # SGWC (S11), тот же хост
+        - address: 127.0.0.3           # SGWC (S11) на своём loopback-адресе
       smf:
-        - address: 192.168.1.26        # SMF/PGW-C (S5c)
+        - address: 127.0.0.4           # SMF/PGW-C (S5c) на своём loopback-адресе
   metrics:
     server:
-      - address: 192.168.1.26
+      - address: 127.0.0.2
         port: 9090
   gummei:
     - plmn_id:
