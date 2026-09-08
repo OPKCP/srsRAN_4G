@@ -7,3 +7,7 @@ uhd_images/*
 !uhd_images/
 !uhd_images/*b210*
 !uhd_images/inventory.json
+
+# Python cache
+__pycache__/
+*.pyc
