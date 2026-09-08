@@ -51,6 +51,10 @@ COPY --from=builder /usr/lib/libogs*.so* /usr/lib/
 COPY --from=builder /usr/lib/libfd*.so* /usr/lib/
 # prometheus-client-c (metrics) — ставится в multiarch dir
 COPY --from=builder /usr/lib/aarch64-linux-gnu/libprom*.so* /usr/lib/aarch64-linux-gnu/
+# Конфиги freeDiameter (устанавливаются в /etc/freeDiameter)
+COPY --from=builder /etc/freeDiameter /etc/freeDiameter
+# Расширения freeDiameter (.fdx) — загружаются из /usr/lib/freeDiameter
+COPY --from=builder /usr/lib/freeDiameter /usr/lib/freeDiameter
 RUN ldconfig || true
 
 # Конфиги по умолчанию монтируются как volume (--config).

@@ -1,0 +1,68 @@
+# syntax=docker/dockerfile:1.7
+# ============================================================
+# ВРЕМЕННЫЙ Dockerfile для сборки arm64 в режиме эмуляции (QEMU).
+# Особенности:
+#  - БЕЗ ccache (ccache как launcher нестабилен под QEMU-arm64 и
+#    вызывает 'internal compiler error: Segmentation fault').
+#  - ninja -j2 (ограниченный параллелизм снижает нагрузку на QEMU).
+#  - retry-цикл: QEMU segfault компилятора случаен, повтор до успеха.
+# НЕ используется в CI/продакшене.
+# ============================================================
+
+ARG BASE_IMAGE=ghcr.io/opkcp/srsran_4g/srsran_4g-base:base-amd64
+
+FROM ${BASE_IMAGE} AS builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+ARG GIT_BRANCH=unknown
+ARG GIT_COMMIT_HASH=unknown
+ENV GIT_BRANCH=${GIT_BRANCH}
+ENV GIT_COMMIT_HASH=${GIT_COMMIT_HASH}
+
+WORKDIR /src/srsRAN_4G
+
+COPY . .
+
+RUN echo "[BUILD-INFO] GIT_BRANCH=${GIT_BRANCH}" \
+ && echo "[BUILD-INFO] GIT_COMMIT_HASH=${GIT_COMMIT_HASH}"
+
+RUN mkdir -p build \
+    && cd build \
+    && cmake .. \
+        -GNinja \
+        -DCMAKE_INSTALL_PREFIX=/usr/local \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DENABLE_UHD=ON \
+        -DENABLE_ZEROMQ=ON \
+        -DENABLE_4G=ON \
+    && for i in 1 2 3 4 5; do \
+         echo "=== ninja attempt $i ==="; \
+         if ninja -j2; then break; fi; \
+         echo "=== ninja failed on attempt $i, retrying... ==="; \
+       done \
+    && ninja install \
+    && ldconfig
+
+FROM ${BASE_IMAGE} AS runtime
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+COPY --from=builder /usr/local/bin/srs*                /usr/local/bin/
+COPY --from=builder /usr/local/bin/srsran_install_configs.sh /usr/local/bin/
+COPY --from=builder /usr/local/lib/libsrsran*          /usr/local/lib/
+COPY --from=builder /usr/local/share/srsran/           /usr/local/share/srsran/
+
+RUN ldconfig
+
+RUN mkdir -p /etc/srsran \
+ && srsran_install_configs.sh service 2>/dev/null || true
+
+VOLUME ["/etc/srsran"]
+VOLUME ["/var/log/srsran"]
+VOLUME ["/usr/share/uhd/images"]
+
+EXPOSE 36412/sctp 36422/sctp 2152/udp 36421/sctp
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD ss -lnp -S | awk '/srsenb/ && /36412/ {found=1} END {exit !found}' \
+    || pgrep srsenb || exit 1
