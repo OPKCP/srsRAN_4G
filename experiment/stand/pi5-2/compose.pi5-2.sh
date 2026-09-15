@@ -7,7 +7,8 @@
 # Команды:
 #   up        docker compose up -d (с ожиданием healthy mongodb благодаря depends_on)
 #   down      docker compose down (остановить/удалить контейнеры compose, тома целы)
-#   restart   docker compose restart
+#   restart   перезапустить ядро и ПЕРЕСОЗДАТЬ webserver/asterisk (они в namespace
+#             open5gs; обычный compose restart оставляет их упавшими с 137)
 #   status    docker compose ps + быстрый взгляд на ключевые healthcheck-и
 #   logs [svc] logs (по умолчанию open5gs)
 #   recreate  ПОЛНОЕ ЧИСТОЕ пересоздание всего стека через compose: снимает ВСЕ
@@ -49,7 +50,28 @@ case "$cmd" in
     ;;
 
   down)    dc down "$@" ;;
-  restart) dc restart "$@" ;;
+
+  restart)
+    # Перезапускаем ядро, затем ОБЯЗАТЕЛЬНО пересоздаём сервисы, живущие в его
+    # network namespace (webserver/asterisk: network_mode service:open5gs).
+    # Причина: docker compose restart поднимает webserver, пока namespace open5gs
+    # ещё не готов -> "cannot join network namespace of a non running container"
+    # -> webserve падает (Exited 137) и сам уже не возвращается.
+    dc restart open5gs "$@"
+    echo "=== ждём подъём open5gs ==="
+    for i in $(seq 1 30); do
+      [ "$(docker inspect -f '{{.State.Running}}' open5gs 2>/dev/null)" = true ] && break
+      sleep 1
+    done
+    # Пересоздание зависимых от namespace контейнеров (gravит их заново к
+    # актуальному namespace open5gs).
+    dc up -d webserver
+    if docker ps -a --format '{{.Names}}' | grep -qx asterisk; then
+      dc --profile asterisk up -d asterisk 2>/dev/null || true
+    fi
+    echo; echo "=== ps ==="; dc ps
+    ;;
+
   logs)    dc logs -f --tail=100 "${1:-open5gs}" ;;
 
   status)
