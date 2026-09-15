@@ -1,0 +1,10 @@
+# Prometheus datasource для Grafana (provisioning — без ручной настройки UI).
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://172.17.0.1:9091   # хост pi5 с bridge-сети docker0 (Prometheus на host:9091)
+    isDefault: true
+    editable: true

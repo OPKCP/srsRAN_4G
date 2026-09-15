@@ -1,0 +1,28 @@
+# Prometheus — сбор метрик с NF ядра Open5GS (EPC/LTE S1).
+# Запуск на pi5-2 (192.168.1.26) в --network host, т.к. метрики NF слушают
+# loopback-адреса (MME=127.0.0.2, SMF/SGW-C=127.0.0.4, UPF=127.0.0.7:9090),
+# из bridge-сети они недоступны.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Ядро Open5GS (LTE/EPC): MME, SGW-C/SMF, UPF
+  - job_name: "open5gs"
+    # Open5GS отдаёт метрики со пустым Content-Type (текстовый формат 0.0.4).
+    # Prometheus 3.x иначе отбраковывает цель — задаём запасной протокол.
+    scrape_native_histograms: false
+    fallback_scrape_protocol: "PrometheusText0.0.4"
+    static_configs:
+      - targets: ["127.0.0.2:9090"]
+        labels: { instance: "mme",  nf: "mme" }
+      - targets: ["127.0.0.4:9090"]
+        labels: { instance: "smf",  nf: "smf" }
+      - targets: ["127.0.0.7:9090"]
+        labels: { instance: "upf",  nf: "upf" }
+
+  # Сам Prometheus (на хосте слушает 9091, т.к. 9090 занят метриками UPF)
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9091"]

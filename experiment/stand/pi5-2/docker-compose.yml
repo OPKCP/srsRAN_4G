@@ -1,0 +1,140 @@
+# =============================================================================
+# docker-compose.yml — узел pi5-2 (192.168.1.26): ядро Open5GS + зависимые сервисы
+# =============================================================================
+# Что покрывает ЭТОТ compose (только то, что живёт в сетевом namespace ядра и
+# зависит от него). Базовые станции (eNB1 на base5, eNB2 на pi5-2), а также
+# дашборд/мониторинг (srsran-dashboard-epc, grafana, prometheus) сюда НЕ входят —
+# они запускаются отдельными скриптами (см. srs-readme.md / experiment/*.sh).
+#
+# ЗАЧЕМ compose: решает порядок запуска. HSS при старте обращается к MongoDB;
+# если mongo ещё не поднялась — hssd падает («Failed to initialize HSS») и больше
+# не поднимается сам → телефоны не проходят аутентификацию (diam 3002).
+# Лечится здесь: mongodb получает healthcheck, open5gs — depends_on с условием
+# service_healthy, webserver/asterisk — depends_on на open5gs.
+#
+# СЕТЕВАЯ МОДЕЛЬ (воспроизводит текущий прод один-в-один):
+#   - mongodb, open5gs : network_mode: host (нативные SCTP 36412 / GTP-U 2152 на
+#     192.168.1.26). Монтируем тот же том open5gs_mongo, что и раньше.
+#   - webserver, asterisk : network_mode: "service:open5gs" — сидят в network
+#     namespace ядра и слушают на интерфейсе SPGW (10.0.0.1) для абонентов.
+#
+# РАСПОЛОЖЕНИЕ на узле: ~/srsran/stand/pi5-2/ (имя проекта compose = pi5-2).
+#
+# ЗАПУСК (см. compose.pi5-2.sh):
+#   ./compose.pi5-2.sh migrate   # одноразово: снять живые контейнеры -> включить этот compose
+#   ./compose.pi5-2.sh up        # обычный запуск/перезапуск стека ядра
+#   ./compose.pi5-2.sh down      # остановить стек compose
+# =============================================================================
+
+services:
+  # --- MongoDB: схема open5gs (subscribers.security:{}), тот же том open5gs_mongo. ---
+  mongodb:
+    image: mongo:6
+    container_name: open5gs-mongodb
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - open5gs_mongo:/data/db
+    healthcheck:
+      # mongo:6 содержит mongosh. ping.ok==1 => сервер готов принимать подключения.
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand({ping:1}).ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+  # --- Ядро Open5GS (все NF в одном контейнере: mmed,hssd,pcrfd,sgwcd,sgwud,smfd,upfd). ---
+  # Запуск всех NF — через ./run_open5gs.sh, примонтированный в /opt/open5gs.
+  open5gs:
+    image: ${IMG_OPEN5GS:-open5gs-arm64:v2.7.2}
+    container_name: open5gs
+    restart: unless-stopped
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    volumes:
+      - ${HOME:?set HOME}/open5gs/config:/etc/open5gs:ro
+      - ${HOME}/open5gs/config/freeDiameter:/etc/freeDiameter:ro
+      - ${HOME}/open5gs:/opt/open5gs:ro
+      - ${HOME}/open5gs/logs:/var/log/open5gs
+    entrypoint: ["/bin/bash"]
+    command: ["/opt/open5gs/run_open5gs.sh"]
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+  # --- Веб-сервер раздачи файлов абонентам (quality-testing). В namespace ядра. ---
+  # Слушает :8080 на 10.0.0.1 (шлюз SPGW) -> телефоны качают http://10.0.0.1:8080/
+  webserver:
+    image: quality-testing:latest
+    container_name: webserve
+    restart: unless-stopped
+    network_mode: "service:open5gs"
+    working_dir: /app/server
+    environment:
+      STATIC_DIR: /app/static
+      HISTORY_DIR: /app/history
+      EPC_LOG: /app/epclogs/epc.log
+      GATEWAY_IP: 10.0.0.1
+      LISTEN_HOST: 0.0.0.0
+      LISTEN_PORT: "8080"
+      SERVE_DIR: /serve
+    volumes:
+      - ${HOME}/srsran/quality-testing/server:/app/server
+      - ${HOME}/srsran/quality-testing/static:/app/static
+      - ${HOME}/srsran/quality-history:/app/history
+      - ${HOME}/srsran/logs:/app/epclogs
+      - ${HOME}/srsran/apk-serving:/serve
+    command: ["python", "/app/server/app.py"]
+    depends_on:
+      - open5gs
+
+  # --- Asterisk (SIP/VoIP). В namespace ядра -> абоненты звонят на 10.0.0.1:5060. ---
+  # В проде currently остановлен (restart=no). По умолчанию выключен (profile
+  # "asterisk"), чтобы compose up НЕ включал то, что раньше не работало.
+  # Включить:   COMPOSE_PROFILES=asterisk ./compose.pi5-2.sh up
+  asterisk:
+    image: andrius/asterisk:latest
+    container_name: asterisk
+    profiles: ["asterisk"]
+    restart: unless-stopped
+    network_mode: "service:open5gs"
+    volumes:
+      - ${HOME}/srsran/asterisk/pjsip.conf:/etc/asterisk/pjsip.conf:ro
+      - ${HOME}/srsran/asterisk/extensions.conf:/etc/asterisk/extensions.conf:ro
+    depends_on:
+      - open5gs
+
+  # --- Open5GS WebUI (веб-панель абонентов/SIM). Отдельный контейнер из ОБРАЗА ЯДРА
+  #     с webui (тег -webui). Профиль "webui" -> по умолчанию ВЫКЛЮЧЕН (образ ядра
+  #     без webui тоже подходит для этого compose, если профиль не включать).
+  #     Порт 9999 (дефолт webui; 3000 занят Grafana). DB = mongodb в этом узле.
+  #     Включить:  IMG_OPEN5GS=open5gs-arm64:v2.7.2-webui COMPOSE_PROFILES=webui ./compose.pi5-2.sh up
+  webui:
+    image: ${IMG_OPEN5GS:-open5gs-arm64:v2.7.2-webui}
+    container_name: open5gs-webui
+    profiles: ["webui"]
+    restart: unless-stopped
+    network_mode: host
+    entrypoint: ["/opt/open5gs/start-webui.sh"]
+    environment:
+      DB_URI: mongodb://127.0.0.1:27017/open5gs
+      HOSTNAME: 0.0.0.0
+      PORT: "9999"
+      WEBUI_ADMIN_USER: admin
+      WEBUI_ADMIN_PASS: "1423"
+      TZ: Europe/Moscow
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+volumes:
+  # ВНЕШНИЙ том с данными абонентов (subscribers.security:{}). Его создал прежний
+  # запуск open5gs-mongodb (docker run). Объявлен external, чтобы compose НЕ пересоздавал
+  # и НЕ чистил его и не выдавал предупреждение — данные НЕ теряются при migrate.
+  # Создать вручную (однократно, если тома вдруг нет):
+  #   docker volume create open5gs_mongo
+  open5gs_mongo:
+    external: true

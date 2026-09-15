@@ -1,0 +1,98 @@
+{
+  "uid": "open5gs-epc",
+  "title": "Open5GS EPC (LTE S1) — состояние ядра",
+  "tags": ["open5gs", "lte", "epc"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "time": { "from": "now-30m", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Базовые станции (S1)",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 0 },
+      "targets": [{ "refId": "A", "expr": "max(enb)" }],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "UE (eNB-UE)",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 0 },
+      "targets": [{ "refId": "A", "expr": "max(enb_ue)" }],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "MME-сессии",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 0 },
+      "targets": [{ "refId": "A", "expr": "max(mme_session)" }],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "SMF-UE",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 0 },
+      "targets": [{ "refId": "A", "expr": "max(ues_active)" }],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "UE / БС / MME-сессии",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 5 },
+      "targets": [
+        { "refId": "A", "expr": "max(enb_ue)", "legendFormat": "UE" },
+        { "refId": "B", "expr": "max(enb)", "legendFormat": "БС (eNB)" },
+        { "refId": "C", "expr": "max(mme_session)", "legendFormat": "MME-сессии" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "CPU NF (сек/сек)",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 5 },
+      "targets": [
+        { "refId": "A", "expr": "rate(process_cpu_seconds_total{nf=\"mme\"}[1m])", "legendFormat": "MME" },
+        { "refId": "B", "expr": "rate(process_cpu_seconds_total{nf=\"smf\"}[1m])", "legendFormat": "SMF/SGW-C" },
+        { "refId": "C", "expr": "rate(process_cpu_seconds_total{nf=\"upf\"}[1m])", "legendFormat": "UPF" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "UPF: пакеты N3 GTP-U (in/out)",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "targets": [
+        { "refId": "A", "expr": "rate(fivegs_ep_n3_gtp_indatapktn3upf[1m])", "legendFormat": "in pkt/s" },
+        { "refId": "B", "expr": "rate(fivegs_ep_n3_gtp_outdatapktn3upf[1m])", "legendFormat": "out pkt/s" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "UPF: суммарный объём N3 (in/out, всего байт)",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "targets": [
+        { "refId": "A", "expr": "sum(fivegs_ep_n3_gtp_indatavolumeqosleveln3upf)", "legendFormat": "всего принято" },
+        { "refId": "B", "expr": "sum(fivegs_ep_n3_gtp_outdatavolumeqosleveln3upf)", "legendFormat": "всего отправлено" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "Bps" }, "overrides": [] }
+    }
+  ]
+}
