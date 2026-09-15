@@ -28,11 +28,16 @@ HISTORY_DIR="${HISTORY_DIR:-$HOME/srsran/quality-history}"    # журнал з�
 EPC_LOGS_DIR="${EPC_LOGS_DIR:-$HOME/srsran/logs}"             # каталог с epc.log (ядра)
 PORT="${WEB_PORT:-8080}"
 
-# --- Проверка namespace epc ---
-if ! docker ps --format '{{.Names}}' | grep -q '^epc$'; then
-  echo "[ERROR] Контейнер epc не запущен! webserve должен работать в namespace epc." >&2
+# --- Поиск запущенного ядра (srsepc='epc' или Open5GS='open5gs') ---
+CORE=""
+for c in epc open5gs; do
+  if docker ps --format '{{.Names}}' | grep -qx "$c"; then CORE="$c"; break; fi
+done
+if [ -z "$CORE" ]; then
+  echo "[ERROR] Не запущено ядро (epc или open5gs) — webserve должен работать в его network namespace." >&2
   exit 1
 fi
+echo "[OK] Ядро-хост namespace: $CORE"
 
 # --- Каталоги ---
 mkdir -p "$SERVE_DIR" "$HISTORY_DIR"
@@ -52,7 +57,7 @@ echo "[OK] Удалён старый контейнер $NAME"
 # Серверный код app.py монтируем в /app; при изменении app.py нужно
 # docker restart webserve. Статика /app/static -- живая (без пересборки).
 docker run -d --name "$NAME" \
-  --network container:epc \
+  --network "container:${CORE}" \
   --restart unless-stopped \
   -e SERVE_DIR=/serve \
   -e STATIC_DIR=/app/static \
