@@ -80,6 +80,32 @@ docker ps   # должны быть: epc, webserve, asterisk, srsran-dashboard-e
 docker ps   # должны быть: enb, srsran-dashboard
 ```
 
+> ⚠️ **Особенность SDR на Base5 (проверено 2026-10-16).** Установленная плата —
+> клон **LibreSDR B220mini** (`uhd_find_devices` → `name: LibreSDR_B220mini`,
+> `product: B210`, serial `M0M84A5`), а НЕ оригинальная Ettus B210. FPGA у него
+> **Artix-7 XC7A100T**, поэтому штатный битстрим UHD `usrp_b210_fpga.bin`
+> (для Spartan-6) не подходит: прошивка FX3 загружается, загрузка FPGA доходит
+> до 100 % и падает с `Error: RuntimeError: fx3 is in state 5`, после чего
+> `srsenb` перезапускается по кругу (~каждые 82 с, код возврата 255).
+>
+> **Решение:** подложить клон-специфичный битстрим:
+> ```bash
+> cd /tmp && curl -sSLO https://raw.githubusercontent.com/lmesserStep/LibreSDRB210/main/usrp_b210_fpga.bin
+> sudo cp usrp_b210_fpga.bin /home/shmac/srsran/uhd_images/usrp_b210_fpga.bin  # монтируется в контейнер
+> sudo cp usrp_b210_fpga.bin /usr/share/uhd/images/usrp_b210_fpga.bin          # хостовый UHD 4.8
+> md5sum /home/shmac/srsran/uhd_images/usrp_b210_fpga.bin  # 216e64561bd63c6957942db7b7a9feea
+> ```
+> Оригинальные образы сохранены как `usrp_b210_fpga.bin.orig-ettus`.
+> **После каждого обновления UHD (`apt upgrade uhd-host` / пересборки образа)
+> файл нужно заменять заново** — пакет перезапишет его штатным.
+>
+> Плата подключена на **USB 2.0** (480 Мбит/с) — это правильно и обязательно,
+> см. предупреждение в `~/srsran/experiment_enb/enb.conf`.
+>
+> Отдельно: `uhd_find_devices` на хосте показывает `No UHD Devices Found`, пока
+> `srsenb` держит USB-устройство открытым (проверка: `sudo fuser -v /dev/bus/usb/001/*`).
+> Это не признак отсутствия платы — сначала остановите контейнер `enb`.
+
 ---
 
 ## pi5-2 (eNB2) — IP 192.168.1.26 (wifi), БС2

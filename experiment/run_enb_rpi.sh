@@ -16,6 +16,23 @@ LOGS="$HOME/srsran/local/logs"
 UHD_IMAGES="$HOME/srsran/uhd_images"
 FFTW_DIR="$HOME/srsran/fftw"
 
+# --- Проверка битстрима FPGA для платы на этом узле ---
+# На Base5 стоит клон LibreSDR B220mini (FPGA Artix-7 XC7A100T) — ему нужен
+# свой usrp_b210_fpga.bin, иначе UHD падает с "fx3 is in state 5" и eNB
+# уходит в цикл рестартов. После обновления UHD файл перезаписывается штатным.
+CLONE_B210_MD5="216e64561bd63c6957942db7b7a9feea"
+FPGA_IMG="$UHD_IMAGES/usrp_b210_fpga.bin"
+if [ -e "$FPGA_IMG" ]; then
+  img_md5="$(md5sum "$FPGA_IMG" | cut -d' ' -f1)"
+  if [ "$img_md5" != "$CLONE_B210_MD5" ]; then
+    echo "[ПРЕДУПРЕЖДЕНИЕ] $FPGA_IMG не является битстримом для клона LibreSDR"
+    echo "                 (ожидается md5 $CLONE_B210_MD5, получен $img_md5)."
+    echo "                 Штатный образ Ettus (Spartan-6) не подойдёт — srsenb"
+    echo "                 будет падать с 'fx3 is in state 5'. См. 'Base5 (eNB1)'"
+    echo "                 в srs-readme.md."
+  fi
+fi
+
 # --- Удаление старого контейнера ---
 docker rm -f "$NAME" >/dev/null 2>&1 || true
 echo "[OK] Удалён старый контейнер $NAME"
