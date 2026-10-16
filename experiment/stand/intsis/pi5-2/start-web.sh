@@ -19,6 +19,11 @@ SRS="$HOME/srsran"
 LOGS="$SRS/data/logs"
 HISTORY="$SRS/data/quality-history"
 
+# Основной IP узла (на wlan0 есть и вторичный .20 — его не берём).
+IP="$(ip -4 addr show wlan0 2>/dev/null | grep -oE 'inet [0-9.]+' | awk '{print $2}' \
+      | grep -v '^192\.168\.1\.20$' | head -1)"
+[ -z "$IP" ] && IP="$(hostname -I | awk '{print $1}')"
+
 echo "===== ВЕБ-СЕРВЕРЫ СТЕНДА на $(hostname) ====="
 
 # --- Определяем контейнер ядра: webserve живёт в его namespace ---
@@ -67,7 +72,7 @@ docker run -d --name srsran-dashboard-epc --restart unless-stopped \
   -v "$SRS/config_epc:/userdb:rw" \
   -p 5001:5001 \
   srsran-dashboard:latest >/dev/null
-echo "[OK] dashboard  -> http://$(hostname -I | awk '{print $1}'):5001 (ядро)"
+echo "[OK] dashboard  -> http://${IP}:5001 (ядро)"
 
 # --- 2b. dashboard БС2 (:5000) ---
 docker rm -f srsran-dashboard-enb2 >/dev/null 2>&1 || true
@@ -79,7 +84,7 @@ docker run -d --name srsran-dashboard-enb2 --restart unless-stopped \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -p 5000:5000 \
   srsran-dashboard:latest >/dev/null
-echo "[OK] dashboard  -> http://$(hostname -I | awk '{print $1}'):5000 (БС2)"
+echo "[OK] dashboard  -> http://${IP}:5000 (БС2)"
 
 # --- 3. Prometheus (:9091, host-сеть: видит loopback-метрики NF) ---
 docker rm -f prometheus >/dev/null 2>&1 || true
@@ -93,7 +98,7 @@ docker run -d --name prometheus --restart unless-stopped \
     --storage.tsdb.retention.time=15d \
     --web.listen-address=:9091 \
     --web.enable-lifecycle >/dev/null
-echo "[OK] prometheus -> http://$(hostname -I | awk '{print $1}'):9091"
+echo "[OK] prometheus -> http://${IP}:9091"
 
 # --- 4. Grafana (:3000) ---
 docker rm -f grafana >/dev/null 2>&1 || true
@@ -106,7 +111,7 @@ docker run -d --name grafana --restart unless-stopped \
   -v "$SRS/observability/grafana/provisioning:/etc/grafana/provisioning:ro" \
   -v "$SRS/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro" \
   grafana/grafana:latest >/dev/null
-echo "[OK] grafana    -> http://$(hostname -I | awk '{print $1}'):3000 (admin/admin)"
+echo "[OK] grafana    -> http://${IP}:3000 (admin/admin)"
 
 sleep 3
 echo
