@@ -4,6 +4,8 @@
 # =============================================================================
 set -uo pipefail
 
+mkdir -p "$HOME/.stand" && touch "$HOME/.stand/stop-bs"   # сторож не будет поднимать
+
 echo "===== Остановка БС1 ($(hostname)) ====="
 if docker ps -a --format '{{.Names}}' | grep -qx 'enb'; then
   if docker stop enb >/dev/null 2>&1; then echo "[OK] остановлен enb"; else echo "[ВНИМАНИЕ] не удалось остановить enb"; fi

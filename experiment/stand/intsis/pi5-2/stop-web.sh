@@ -5,6 +5,8 @@
 # =============================================================================
 set -uo pipefail
 
+mkdir -p "$HOME/.stand" && touch "$HOME/.stand/stop-web"   # сторож не будет поднимать
+
 echo "===== Остановка веб-серверов ($(hostname)) ====="
 for c in webserve srsran-dashboard-epc srsran-dashboard-enb2 prometheus grafana; do
   if docker ps -a --format '{{.Names}}' | grep -qx "$c"; then

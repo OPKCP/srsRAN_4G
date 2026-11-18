@@ -5,6 +5,8 @@
 # =============================================================================
 set -uo pipefail
 
+mkdir -p "$HOME/.stand" && touch "$HOME/.stand/stop-core"   # сторож не будет поднимать
+
 echo "===== Остановка ядра сети ($(hostname)) ====="
 for c in open5gs open5gs-mongodb; do
   if docker ps -a --format '{{.Names}}' | grep -qx "$c"; then

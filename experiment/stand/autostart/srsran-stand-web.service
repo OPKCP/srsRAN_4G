@@ -1,0 +1,24 @@
+[Unit]
+Description=srsRAN stand: web servers and monitoring (webserve, dashboards, Prometheus, Grafana)
+After=docker.service network-online.target srsran-stand-core.service
+Wants=docker.service network-online.target
+Wants=srsran-stand-core.service
+ConditionPathExists=/home/intsis/start-web.sh
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=intsis
+Group=intsis
+Environment=HOME=/home/intsis
+WorkingDirectory=/home/intsis
+ExecStart=/home/intsis/stand-autostart.sh web --boot
+TimeoutStartSec=420
+StandardOutput=journal
+StandardError=journal
+Restart=on-failure
+RestartSec=20
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,23 @@
+[Unit]
+Description=srsRAN stand: base station (starts only if SDR is plugged in)
+After=docker.service network-online.target srsran-stand-core.service
+Wants=docker.service network-online.target
+ConditionPathExists=/home/intsis/start-bs.sh
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=intsis
+Group=intsis
+Environment=HOME=/home/intsis
+WorkingDirectory=/home/intsis
+ExecStart=/home/intsis/stand-autostart.sh bs --boot
+TimeoutStartSec=420
+StandardOutput=journal
+StandardError=journal
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

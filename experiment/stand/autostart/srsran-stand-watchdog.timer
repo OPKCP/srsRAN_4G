@@ -1,0 +1,11 @@
+[Unit]
+Description=srsRAN stand: run self-healing watchdog every 2 minutes
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=2min
+AccuracySec=15s
+Unit=srsran-stand-watchdog.service
+
+[Install]
+WantedBy=timers.target

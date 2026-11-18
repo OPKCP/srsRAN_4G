@@ -1,0 +1,24 @@
+[Unit]
+Description=srsRAN stand: core network (MongoDB + Open5GS)
+After=docker.service network-online.target
+Wants=docker.service network-online.target
+ConditionPathExists=/home/intsis/start-core.sh
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=intsis
+Group=intsis
+Environment=HOME=/home/intsis
+WorkingDirectory=/home/intsis
+ExecStart=/home/intsis/stand-autostart.sh core --boot
+TimeoutStartSec=420
+StandardOutput=journal
+StandardError=journal
+# Повтор при неудаче (например, docker ещё не готов / mongo не поднялась).
+Restart=on-failure
+RestartSec=20
+
+[Install]
+WantedBy=multi-user.target

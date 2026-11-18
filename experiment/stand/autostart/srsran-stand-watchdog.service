@@ -1,0 +1,14 @@
+[Unit]
+Description=srsRAN stand: periodic self-healing watchdog (core, web, base station)
+After=docker.service srsran-stand-core.service srsran-stand-web.service
+
+[Service]
+Type=oneshot
+User=intsis
+Group=intsis
+Environment=HOME=/home/intsis
+WorkingDirectory=/home/intsis
+ExecStart=/home/intsis/stand-autostart.sh watchdog
+TimeoutStartSec=600
+StandardOutput=journal
+StandardError=journal

@@ -15,6 +15,8 @@
 # =============================================================================
 set -euo pipefail
 
+rm -f "$HOME/.stand/stop-web"    # ручная остановка снята — сторож снова следит
+
 SRS="$HOME/srsran"
 LOGS="$SRS/data/logs"
 HISTORY="$SRS/data/quality-history"

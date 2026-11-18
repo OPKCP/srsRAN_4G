@@ -4,6 +4,8 @@
 # =============================================================================
 set -uo pipefail
 
+mkdir -p "$HOME/.stand" && touch "$HOME/.stand/stop-bs"   # сторож не будет поднимать
+
 echo "===== Остановка БС2 ($(hostname)) ====="
 if docker ps -a --format '{{.Names}}' | grep -qx 'enb2'; then
   # Если контейнер на паузе, docker stop его не возьмёт — сначала снимаем паузу.

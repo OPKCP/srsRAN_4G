@@ -10,6 +10,8 @@
 # =============================================================================
 set -euo pipefail
 
+rm -f "$HOME/.stand/stop-bs"     # ручная остановка снята — сторож снова следит
+
 SRS="$HOME/srsran"
 CFG="$SRS/enb2"
 LOGS="$SRS/data/logs"
